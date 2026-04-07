@@ -29,6 +29,7 @@ import {
   Send,
   Activity,
 } from "lucide-react";
+import { API_URL } from "../config/config"; // Apne config file se URL import karo
 
 const FDIDashboard = () => {
   const [activeTab, setActiveTab] = useState("dashboard"); // Default "dashboard" (Table) view
@@ -52,7 +53,7 @@ const FDIDashboard = () => {
     try {
       const token = localStorage.getItem("token");
       const res = await axios.post(
-        `http://localhost:5000/api/workers/add-note/${selectedLead._id}`,
+        `${API_URL}/workers/add-note/${selectedLead._id}`,
         { note: newNote },
         { headers: { Authorization: `Bearer ${token}` } },
       );
@@ -315,7 +316,7 @@ const FDIDashboard = () => {
       else if (currentTab === "repnsonate") categoryQuery = "Repnsonate";
 
       const res = await axios.get(
-        `http://localhost:5000/api/workers/get-leads?category=${categoryQuery}`,
+        `${API_URL}/workers/get-leads?category=${categoryQuery}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         },
@@ -371,7 +372,7 @@ const FDIDashboard = () => {
     e.preventDefault();
 
     if (!formData.companyName || !formData.lastName) {
-      return toast.error("Bhai, Company Name aur Last Name toh daal de!");
+      return toast.error("Company Name and Last Name are required fields!");
     }
 
     setLoading(true);
@@ -379,7 +380,7 @@ const FDIDashboard = () => {
       const token = localStorage.getItem("token");
 
       const res = await axios.post(
-        "http://localhost:5000/api/workers/add-lead",
+        `${API_URL}/workers/add-lead` ,
         formData,
         {
           headers: {
