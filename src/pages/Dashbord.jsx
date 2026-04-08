@@ -32,6 +32,9 @@ import {
 import { API_URL } from "../config/config"; // Apne config file se URL import karo
 
 const FDIDashboard = () => {
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [selectedLeadForEdit, setSelectedLeadForEdit] = useState(null);
+
   const [activeTab, setActiveTab] = useState("dashboard"); // Default "dashboard" (Table) view
   const [isCategoryOpen, setIsCategoryOpen] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -45,6 +48,62 @@ const FDIDashboard = () => {
   const [isTimelineOpen, setIsTimelineOpen] = useState(false);
   const [selectedLead, setSelectedLead] = useState(null);
   const [newNote, setNewNote] = useState("");
+
+  const handleUpdateLead = async (e) => {
+    e.preventDefault();
+
+    // 1. Pehle check karo ki ID hai bhi ya nahi
+    if (!formData._id) {
+      console.error("❌ ERROR: Lead ID missing in formData!");
+      return toast.error("Lead ID nahi mili, page refresh karke try karo.");
+    }
+
+    setLoading(true);
+
+    // 2. Exact URL jo hit ho rahi hai usko pehle hi check karlo
+    const targetUrl = `${API_URL}/workers/update-lead/${formData._id}`;
+    console.log("🚀 Attempting Update at:", targetUrl);
+    console.log("📦 Data being sent:", formData);
+
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("Token missing! Login karo.");
+
+      const res = await axios.put(targetUrl, formData, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.data.success) {
+        toast.success("Details updated successfully!");
+        setIsEditMode(false);
+        setFormData({}); // Form clear karo
+        fetchLeads(activeTab); // Table refresh
+      }
+    } catch (err) {
+      // 3. Detailed Error Logging
+      console.error("❌ API Error Details:");
+      if (err.response) {
+        // Server ne response diya (404, 500, etc.)
+        console.error("Status:", err.response.status);
+        console.error("Data:", err.response.data);
+
+        if (err.response.status === 404) {
+          toast.error("Endpoint nahi mila (404). Backend routes check karo!");
+        } else {
+          toast.error(err.response.data.message || "Update failed!");
+        }
+      } else if (err.request) {
+        // Request bheji par response nahi aaya
+        console.error("No response from server. Network issue?");
+        toast.error("Server se connection nahi ho pa raha!");
+      } else {
+        console.error("Error Message:", err.message);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // API Call: Add Timeline Note
   const handleAddNote = async (e) => {
     e.preventDefault();
@@ -299,7 +358,7 @@ const FDIDashboard = () => {
     "Zimbabwe",
   ];
 
-  const subCategories = ["FDI", "CIP", "National PMU", "Repnsonate"];
+  const subCategories = ["FDI", "CIP", "National PMU", "Representation"];
 
   // ==========================================
   // API CALL: FETCH LEADS
@@ -313,7 +372,8 @@ const FDIDashboard = () => {
       if (currentTab === "fdi") categoryQuery = "FDI";
       else if (currentTab === "cip") categoryQuery = "CIP";
       else if (currentTab === "national pmu") categoryQuery = "National PMU";
-      else if (currentTab === "repnsonate") categoryQuery = "Repnsonate";
+      else if (currentTab === "representation")
+        categoryQuery = "Representation";
 
       const res = await axios.get(
         `${API_URL}/workers/get-leads?category=${categoryQuery}`,
@@ -339,7 +399,7 @@ const FDIDashboard = () => {
       "fdi",
       "cip",
       "national pmu",
-      "repnsonate",
+      "representation",
     ];
     if (tableViews.includes(activeTab)) {
       fetchLeads(activeTab);
@@ -379,15 +439,11 @@ const FDIDashboard = () => {
     try {
       const token = localStorage.getItem("token");
 
-      const res = await axios.post(
-        `${API_URL}/workers/add-lead` ,
-        formData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+      const res = await axios.post(`${API_URL}/workers/add-lead`, formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
         },
-      );
+      });
 
       if (res.data.success) {
         toast.success("Lead Mast Save Ho Gayi!");
@@ -408,7 +464,7 @@ const FDIDashboard = () => {
     "fdi",
     "cip",
     "national pmu",
-    "repnsonate",
+    "representation",
   ].includes(activeTab);
 
   let pageTitle = "All Leads Overview";
@@ -444,21 +500,6 @@ const FDIDashboard = () => {
               icon: <UserPlus size={20} />,
               label: "Add New Lead",
             },
-            {
-              id: "countries",
-              icon: <Globe size={20} />,
-              label: "Foreign Markets",
-            },
-            {
-              id: "companies",
-              icon: <Building2 size={20} />,
-              label: "Enterprises",
-            },
-            {
-              id: "reports",
-              icon: <BarChart3 size={20} />,
-              label: "Investment Analytics",
-            },
           ].map((item) => (
             <button
               key={item.id}
@@ -475,50 +516,31 @@ const FDIDashboard = () => {
           ))}
 
           {/* --- CATEGORIES DROPDOWN --- */}
-          <div className="pt-2">
-            <button
-              onClick={() => setIsCategoryOpen(!isCategoryOpen)}
-              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 ${
-                isCategoryOpen
-                  ? "bg-slate-800 text-white"
-                  : "text-slate-400 hover:bg-slate-800 hover:text-white"
-              }`}
-            >
-              <div className="flex items-center gap-4">
-                <Folder
-                  size={20}
-                  className={isCategoryOpen ? "text-blue-400" : ""}
-                />
-                <span className="font-medium">Categories</span>
-              </div>
-              {isCategoryOpen ? (
-                <ChevronDown size={16} />
-              ) : (
-                <ChevronRight size={16} />
-              )}
-            </button>
+          <div className="pt-2 space-y-1">
+            {/* Categories Title (Optional: Ek chota label dene ke liye) */}
 
-            {/* Sub-categories List (Filter Links) */}
-            {isCategoryOpen && (
-              <div className="mt-2 ml-5 pl-4 border-l border-slate-700 space-y-1">
-                {subCategories.map((subItem) => {
-                  const subId = subItem.toLowerCase();
-                  return (
-                    <button
-                      key={subId}
-                      onClick={() => setActiveTab(subId)}
-                      className={`w-full flex items-center px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
-                        activeTab === subId
-                          ? "bg-blue-600/20 text-blue-400"
-                          : "text-slate-400 hover:text-white hover:bg-slate-800"
-                      }`}
-                    >
-                      {subItem}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+            {subCategories.map((subItem) => {
+              const subId = subItem.toLowerCase();
+              return (
+                <button
+                  key={subId}
+                  onClick={() => setActiveTab(subId)}
+                  className={`w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 ${
+                    activeTab === subId
+                      ? "bg-blue-600 text-white shadow-lg shadow-blue-900/50"
+                      : "text-slate-400 hover:bg-slate-800 hover:text-white"
+                  }`}
+                >
+                  <Folder
+                    size={20}
+                    className={
+                      activeTab === subId ? "text-blue-200" : "text-slate-500"
+                    }
+                  />
+                  <span className="font-medium">{subItem}</span>
+                </button>
+              );
+            })}
           </div>
         </nav>
 
@@ -540,6 +562,7 @@ const FDIDashboard = () => {
             ========================================= */}
         {isTableView && (
           <div className="animate-in fade-in duration-500">
+            {/* --- TOP HEADER --- */}
             <div className="flex justify-between items-center mb-8">
               <div>
                 <h1 className="text-3xl font-bold text-slate-800 tracking-tight">
@@ -552,48 +575,112 @@ const FDIDashboard = () => {
               </div>
               <button
                 onClick={() => fetchLeads(activeTab)}
-                className="px-6 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 transition-all shadow-sm"
+                className="px-6 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 transition-all shadow-sm flex items-center gap-2"
               >
-                Refresh Data
+                <Activity size={16} className="text-blue-500" /> Refresh Data
               </button>
             </div>
 
+            {/* --- STATS CARDS SECTION --- */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              {/* 1. Total Leads */}
+              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-5">
+                <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center">
+                  <Briefcase size={24} />
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    Total Leads
+                  </p>
+                  <h3 className="text-2xl font-black text-slate-800">
+                    {leadsData.length}
+                  </h3>
+                </div>
+              </div>
+
+              {/* 2. Contacted (Active) */}
+              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-5">
+                <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center">
+                  <Activity size={24} />
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    Contacted
+                  </p>
+                  <h3 className="text-2xl font-black text-slate-800">
+                    {
+                      leadsData.filter((l) => l.leadStatus === "Contacted")
+                        .length
+                    }
+                  </h3>
+                </div>
+              </div>
+
+              {/* 3. Attempted to Contact */}
+              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-5">
+                <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center">
+                  <Clock size={24} />
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    Attempted
+                  </p>
+                  <h3 className="text-2xl font-black text-slate-800">
+                    {
+                      leadsData.filter(
+                        (l) => l.leadStatus === "Attempted to contact",
+                      ).length
+                    }
+                  </h3>
+                </div>
+              </div>
+            </div>
+
+            {/* --- TABLE SECTION --- */}
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 text-xs uppercase tracking-wider">
-                      <th className="p-5 font-bold">Company Name</th>
-                      <th className="p-5 font-bold">Contact Person</th>
-                      <th className="p-5 font-bold">Country</th>
-                      <th className="p-5 font-bold">Category</th>
-                      <th className="p-5 font-bold">Status</th>
+                    <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 text-xs uppercase tracking-wider font-bold">
+                      <th className="p-5">Company Name</th>
+                      <th className="p-5">Contact Person</th>
+                      <th className="p-5">Country</th>
+                      <th className="p-5">Category</th>
+                      <th className="p-5">Status</th>
+                      <th className="p-5 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {fetching ? (
                       <tr>
-                        <td
-                          colSpan="5"
-                          className="p-8 text-center text-slate-400 font-medium"
-                        >
-                          Loading data...
+                        <td colSpan="6" className="p-20 text-center">
+                          <div className="flex flex-col items-center gap-3">
+                            <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                            <p className="text-slate-400 font-medium">
+                              Fetching leads...
+                            </p>
+                          </div>
                         </td>
                       </tr>
                     ) : leadsData.length === 0 ? (
                       <tr>
                         <td
-                          colSpan="5"
-                          className="p-12 text-center text-slate-400 font-medium"
+                          colSpan="6"
+                          className="p-20 text-center text-slate-400 font-medium"
                         >
-                          No leads found for the selected category.
+                          No leads found for this category.
                         </td>
                       </tr>
                     ) : (
                       leadsData.map((lead) => (
                         <tr
                           key={lead._id}
-                          className="border-b border-slate-100 hover:bg-blue-50/30 transition-colors"
+                          onClick={() => {
+                            setFormData(lead);
+                            setIsEditMode(true);
+                            setActiveTab("add-lead");
+                          }}
+                          className="border-b border-slate-100 hover:bg-blue-50/50 cursor-pointer transition-colors group"
                         >
                           <td className="p-5 font-semibold text-slate-800">
                             {lead.companyName}
@@ -605,7 +692,7 @@ const FDIDashboard = () => {
                             {lead.country || "-"}
                           </td>
                           <td className="p-5">
-                            <span className="px-3 py-1 bg-indigo-100 text-indigo-700 text-[10px] uppercase font-black tracking-wider rounded-full">
+                            <span className="px-3 py-1 bg-indigo-50 text-indigo-600 text-[10px] uppercase font-black tracking-wider rounded-full">
                               {lead.category || "None"}
                             </span>
                           </td>
@@ -622,14 +709,14 @@ const FDIDashboard = () => {
                               {lead.leadStatus || "New"}
                             </span>
                           </td>
-                          {/* Baki td ke theek niche ye td lagao */}
                           <td className="p-5 text-right">
                             <button
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 setSelectedLead(lead);
                                 setIsTimelineOpen(true);
                               }}
-                              className="px-4 py-2 bg-slate-100 hover:bg-blue-50 text-blue-600 font-semibold rounded-lg text-xs transition-colors flex items-center gap-2 ml-auto"
+                              className="px-4 py-2 bg-slate-100 hover:bg-blue-600 hover:text-white text-blue-600 font-semibold rounded-lg text-xs transition-all flex items-center gap-2 ml-auto shadow-sm"
                             >
                               <Activity size={14} /> Timeline
                             </button>
@@ -653,26 +740,44 @@ const FDIDashboard = () => {
             <div className="flex justify-between items-center mb-8">
               <div>
                 <h1 className="text-3xl font-bold text-slate-800 tracking-tight">
-                  Create Lead
+                  {isEditMode ? "Edit Lead Details" : "Create Lead"}
                 </h1>
                 <p className="text-slate-500 text-sm mt-1">
-                  Enter new investor details into the system.
+                  {isEditMode
+                    ? `Updating information for ${formData.companyName || "this lead"}`
+                    : "Enter new investor details into the system."}
                 </p>
               </div>
               <div className="flex gap-4">
                 <button
-                  onClick={() => setActiveTab("dashboard")}
+                  onClick={() => {
+                    setIsEditMode(false);
+                    setFormData({});
+                    setActiveTab("dashboard");
+                  }}
                   className="px-6 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 hover:border-slate-400 transition-all shadow-sm"
                 >
                   Cancel
                 </button>
-                <button
-                  onClick={handleSaveLead}
-                  disabled={loading}
-                  className="px-8 py-2.5 bg-[#0f62fe] text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-all shadow-md shadow-blue-200 active:scale-95 disabled:opacity-70"
-                >
-                  {loading ? "Saving..." : "Save Lead"}
-                </button>
+
+                {/* --- DYNAMIC BUTTON (SAVE OR UPDATE) --- */}
+                {isEditMode ? (
+                  <button
+                    onClick={handleUpdateLead}
+                    disabled={loading}
+                    className="px-8 py-2.5 bg-orange-600 text-white rounded-lg text-sm font-semibold hover:bg-orange-700 transition-all shadow-md shadow-orange-200 active:scale-95 disabled:opacity-70"
+                  >
+                    {loading ? "Updating..." : "Update Changes"}
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleSaveLead}
+                    disabled={loading}
+                    className="px-8 py-2.5 bg-[#0f62fe] text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-all shadow-md shadow-blue-200 active:scale-95 disabled:opacity-70"
+                  >
+                    {loading ? "Saving..." : "Save Lead"}
+                  </button>
+                )}
               </div>
             </div>
 
@@ -860,7 +965,7 @@ const FDIDashboard = () => {
                         </label>
                         <input
                           type="text"
-                          value={loggedInUser.fullName}
+                          value={loggedInUser.fullName || ""} // Safety ke liye || ""
                           disabled
                           className="flex-1 p-2.5 bg-slate-100 border border-slate-200 rounded-md text-sm text-slate-500 cursor-not-allowed"
                         />
