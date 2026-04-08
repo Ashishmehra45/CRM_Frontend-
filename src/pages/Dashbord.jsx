@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom"; // Ye zaroori hai
 import {
   Search,
   Bell,
+  Sparkles,
   LayoutDashboard,
   UserPlus,
   Globe,
@@ -1326,10 +1327,7 @@ const FDIDashboard = () => {
           </div>
         )}
 
-        {/* =========================================
-            TIMELINE SLIDE-OVER PANEL
-            ========================================= */}
-        {isTimelineOpen && selectedLead && (
+         {isTimelineOpen && selectedLead && (
           <div className="fixed inset-0 z-[100] flex justify-end bg-slate-900/20 backdrop-blur-[1px] transition-all">
             {/* Panel Card */}
             <div className="w-full max-w-md bg-white h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
@@ -1353,50 +1351,84 @@ const FDIDashboard = () => {
               </div>
 
               {/* Timeline List (Scrollable Area) */}
+            
               <div className="flex-1 overflow-y-auto p-6 bg-slate-50/30">
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
                   <Clock size={14} /> Activity History
                 </h3>
 
                 {/* Timeline Logic */}
-                {!selectedLead.timeline ||
-                selectedLead.timeline.length === 0 ? (
+                {!selectedLead.timeline || selectedLead.timeline.length === 0 ? (
                   <div className="text-center py-10">
-                    <MessageSquare
-                      size={32}
-                      className="mx-auto text-slate-300 mb-3"
-                    />
+                    <MessageSquare size={32} className="mx-auto text-slate-300 mb-3" />
                     <p className="text-sm text-slate-500">
                       No activity recorded yet.
                     </p>
                   </div>
                 ) : (
                   <div className="relative border-l-2 border-slate-200 ml-3 space-y-8">
-                    {/* Notes ko latest first dikhane ke liye reverse kiya hai */}
-                    {[...selectedLead.timeline].reverse().map((item, index) => (
-                      <div key={index} className="relative pl-6">
-                        {/* Dot */}
-                        <div className="absolute -left-[9px] top-1 w-4 h-4 bg-blue-100 border-2 border-blue-500 rounded-full"></div>
+                    {/* 🔥 FIX: .reverse() hata diya. Ab chat ki tarah purana upar aur naya niche aayega */}
+                    {selectedLead.timeline.map((item, index) => {
+                      // Admin Note check in Worker Dashboard
+                      const isAdminInstruction =
+                        item.type === "admin_instruction" ||
+                        item.addedBy?.toLowerCase().includes("admin");
 
-                        {/* Content */}
-                        <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
-                          <div className="flex justify-between items-start mb-2">
-                            <span className="text-xs font-bold text-slate-700">
-                              {item.addedBy}
-                            </span>
-                            <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 px-2 py-1 rounded-md">
-                              {new Date(item.timestamp).toLocaleString(
-                                "en-IN",
-                                { dateStyle: "medium", timeStyle: "short" },
-                              )}
-                            </span>
+                      return (
+                        <div key={index} className="relative pl-6">
+                          {/* Dot - Admin ke liye Special Blue/Sparkle, normal ke liye standard */}
+                          <div
+                            className={`absolute -left-[9px] top-1 w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                              isAdminInstruction
+                                ? "bg-blue-600 border-blue-600 shadow-[0_0_10px_rgba(37,99,235,0.4)] z-10"
+                                : "bg-blue-100 border-blue-500"
+                            }`}
+                          >
+                            {isAdminInstruction && (
+                              <Sparkles size={8} className="text-white" />
+                            )}
                           </div>
-                          <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">
-                            {item.note}
-                          </p>
+
+                          {/* Content Card */}
+                          <div
+                            className={`p-4 rounded-2xl shadow-sm border ${
+                              isAdminInstruction
+                                ? "bg-blue-50/50 border-blue-200"
+                                : "bg-white border-slate-100"
+                            }`}
+                          >
+                            <div className="flex justify-between items-start mb-2">
+                              {/* Author Name */}
+                              <span
+                                className={`text-xs font-bold flex items-center gap-1 ${
+                                  isAdminInstruction ? "text-blue-700" : "text-slate-700"
+                                }`}
+                              >
+                                {isAdminInstruction && (
+                                  <Sparkles size={12} className="text-blue-600" />
+                                )}
+                                {isAdminInstruction ? " Admin " : item.addedBy}
+                              </span>
+                              <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 px-2 py-1 rounded-md">
+                                {new Date(item.timestamp || item.createdAt).toLocaleString(
+                                  "en-IN",
+                                  { dateStyle: "medium", timeStyle: "short" }
+                                )}
+                              </span>
+                            </div>
+
+                            {/* Text Content */}
+                            <p
+                              className={`text-sm leading-relaxed whitespace-pre-wrap ${
+                                isAdminInstruction ? "text-blue-900 font-medium" : "text-slate-600"
+                              }`}
+                            >
+                              {item.note || item.text}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>

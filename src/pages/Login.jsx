@@ -3,29 +3,38 @@ import { Mail, Lock, ArrowRight, ShieldCheck } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import toast, { Toaster } from "react-hot-toast";
+import { API_URL } from "../config/config";
 
 const Login = () => {
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleLogin = async (e) => {
+ const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
 
     try {
       // Backend Login API Call
-      const res = await axios.post("http://localhost:5000/api/workers/login", formData);
+      const res = await axios.post(`${API_URL}/workers/login`, formData);
       
       if (res.data.success) {
         // 1. Token aur User Info Save Karo
         localStorage.setItem("token", res.data.token);
         localStorage.setItem("user", JSON.stringify(res.data.user));
 
-        toast.success("Welcome Back! Redirecting...");
+        toast.success(`Welcome ${res.data.user.fullName}! Redirecting...`);
         
-        // 2. Dashboard pe bhej do
-        setTimeout(() => navigate("/dashboard"), 1500);
+        // 2. 🔥 ROLE-BASED NAVIGATION (Yahan update kiya hai)
+        setTimeout(() => {
+          if (res.data.user.role === 'admin') {
+            // Agar Admin hai toh Admin Dashboard
+            navigate("/admin-dashboard");
+          } else {
+            // Agar normal worker hai toh puraana dashboard
+            navigate("/dashboard");
+          }
+        }, 1500);
       }
     } catch (err) {
       toast.error(err.response?.data?.message || "Invalid Credentials!");
@@ -44,7 +53,7 @@ const Login = () => {
           <h2 className="text-4xl font-black text-white tracking-tighter italic">
             IM<span className="text-blue-200">GLOBAL</span>
           </h2>
-          <p className="text-blue-100 text-xs mt-2 font-bold uppercase tracking-widest">Worker Sign In</p>
+          <p className="text-blue-100 text-xs mt-2 font-bold uppercase tracking-widest">Authorized Personnel Only</p>
         </div>
 
         <form onSubmit={handleLogin} className="p-10 space-y-6">
