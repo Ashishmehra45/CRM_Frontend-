@@ -1,5 +1,6 @@
 import React from "react";
 import { ShieldCheck } from "lucide-react";
+import logo from "../assets/im global.png"; // 🔥 Naya logo import kiya
 
 const WelcomeLoader = () => {
   return (
@@ -12,17 +13,13 @@ const WelcomeLoader = () => {
         <div className="flex justify-center">
           <div className="relative">
             <div className="absolute inset-0 bg-blue-500 blur-2xl opacity-20 animate-pulse"></div>
-            <div className="relative p-6 bg-gradient-to-br from-blue-500 to-blue-700 rounded-[2.5rem] text-white shadow-2xl shadow-blue-500/40 animate-bounce">
-              <ShieldCheck size={64} strokeWidth={2.5} />
-            </div>
+           
           </div>
         </div>
 
         {/* Text Section */}
         <div className="space-y-3">
-          <h1 className="text-5xl md:text-6xl font-black text-white tracking-tighter italic">
-            IM <span className="text-blue-500">GLOBAL</span>
-          </h1>
+          <img className="ml-[60px] mt-[-80px] h-50 w-50" src={logo} alt="IMGLOBAL Logo" />
           <div className="flex items-center justify-center gap-3">
             <div className="h-[1px] w-8 bg-blue-500/30"></div>
             <p className="text-blue-200/50 font-black text-[10px] uppercase tracking-[0.5em]">
