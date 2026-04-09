@@ -6,6 +6,8 @@ import imglogo from "../assets/im global.png"; // Logo ke liye image import karo
 import {
   Search,
   Bell,
+  Menu, 
+  
   Sparkles,
   LayoutDashboard,
   UserPlus,
@@ -50,6 +52,7 @@ const FDIDashboard = () => {
   const [isTimelineOpen, setIsTimelineOpen] = useState(false);
   const [selectedLead, setSelectedLead] = useState(null);
   const [newNote, setNewNote] = useState("");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const handleUpdateLead = async (e) => {
     e.preventDefault();
@@ -479,13 +482,43 @@ const FDIDashboard = () => {
     <div className="flex min-h-screen bg-gray-50 font-sans">
       <Toaster position="top-center" />
       {/* --- SIDEBAR --- */}
-      <aside className="w-72 bg-slate-900 text-white flex flex-col fixed left-0 top-0 h-screen shadow-2xl z-50 overflow-y-auto">
-        <div className="p-8">
+     {/* 🔥 MOBILE HEADER (Sirf choti screen par dikhega) */}
+      <div className="md:hidden fixed top-0 w-full bg-slate-900 text-white z-[60] flex justify-between items-center px-6 py-4 shadow-md">
+        <div className="flex items-center gap-2">
+          <img className="h-8 w-8 object-contain" src={imglogo} alt="Logo" />
+          <p className="text-xs font-extrabold text-slate-100 uppercase tracking-widest mt-1">
+            CRM <span className="text-blue-500">Portal</span>
+          </p>
+        </div>
+        <button 
+          onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
+          className="p-2 bg-slate-800 rounded-lg hover:bg-slate-700 transition-colors"
+        >
+          {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
+      </div>
+
+      {/* 🔥 SIDEBAR OVERLAY (Mobile ke liye jab menu khula ho) */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/60 z-[40] md:hidden backdrop-blur-sm transition-opacity"
+          onClick={() => setIsSidebarOpen(false)}
+        ></div>
+      )}
+
+      {/* --- SIDEBAR --- */}
+      <aside className={`fixed inset-y-0 left-0 z-[50] w-72 bg-slate-900 text-white flex flex-col h-screen shadow-2xl overflow-y-auto transform transition-transform duration-300 ease-in-out ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0`}>
+        
+        {/* Desktop Logo Area (Mobile pe hide kiya hai kyunki top header me hai) */}
+        <div className="p-8 hidden md:block">
          <img className="h-20 w-20 mt-[-30px]" src={imglogo} alt="IMGLOBAL Logo" />
-          <p className="text-xs font-extrabold mt-[-5px] ml-[10px] text-slate-100  uppercase tracking-widest">
+          <p className="text-xs font-extrabold mt-[-5px] ml-[10px] text-slate-100 uppercase tracking-widest">
             CRM  <span className="text-blue-500">Portal</span>
           </p>
         </div>
+
+        {/* Mobile Spacing */}
+        <div className="h-20 md:hidden"></div>
 
         <nav className="flex-1 px-4 space-y-2">
           {/* Main Menu Items */}
@@ -503,7 +536,10 @@ const FDIDashboard = () => {
           ].map((item) => (
             <button
               key={item.id}
-              onClick={() => setActiveTab(item.id)}
+              onClick={() => {
+                setActiveTab(item.id);
+                setIsSidebarOpen(false); // Mobile pe click karne ke baad menu band ho jayega
+              }}
               className={`w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 ${
                 activeTab === item.id
                   ? "bg-blue-600 text-white shadow-lg shadow-blue-900/50"
@@ -517,14 +553,15 @@ const FDIDashboard = () => {
 
           {/* --- CATEGORIES DROPDOWN --- */}
           <div className="pt-2 space-y-1">
-            {/* Categories Title (Optional: Ek chota label dene ke liye) */}
-
             {subCategories.map((subItem) => {
               const subId = subItem.toLowerCase();
               return (
                 <button
                   key={subId}
-                  onClick={() => setActiveTab(subId)}
+                  onClick={() => {
+                    setActiveTab(subId);
+                    setIsSidebarOpen(false); // Click pe menu band
+                  }}
                   className={`w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-200 ${
                     activeTab === subId
                       ? "bg-blue-600 text-white shadow-lg shadow-blue-900/50"
@@ -544,10 +581,9 @@ const FDIDashboard = () => {
           </div>
         </nav>
 
-        {/* Sidebar ke end mein jo logout button hai usey aise badlo */}
         <div className="p-6 border-t border-slate-800 mt-4">
           <button
-            onClick={handleLogout} // Ye function call karo
+            onClick={handleLogout} 
             className="flex items-center gap-3 text-slate-400 hover:text-red-400 transition-colors w-full"
           >
             <LogOut size={18} /> <span>Logout</span>

@@ -6,6 +6,7 @@ import Register from '../pages/Register'
 import Login from '../pages/Login'
 import AdminDashboard from '../pages/admin-dashboard'
 import WelcomeLoader from '../components/WelcomeLoader' // 🔥 Naya loader import kiya
+import ResetPassword from '../pages/ResetPassword' // 🔥 Naya Reset Password Page import kiya
 
 function AppRoutes() {
   const [loading, setLoading] = useState(true);
@@ -43,6 +44,7 @@ function AppRoutes() {
           
           {/* Admin Dashboard Page */}
           <Route path="/admin-dashboard" element={<AdminDashboard />} />
+          <Route path="/reset-password/:token" element={<ResetPassword />} />
         </Routes>
       </main>
       

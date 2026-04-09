@@ -23,14 +23,14 @@ function Header() {
     // 2. Pehli baar load karo
     loadUserData();
 
-    // 3. 🔥 MAGIC: Jab bhi localStorage badle (Logout hone par), ye automatic chalega
+    // 3. 🔥 MAGIC: Jab bhi localStorage badle, ye automatic chalega
     const handleStorageChange = () => {
       loadUserData();
     };
 
     window.addEventListener("storage", handleStorageChange);
     
-    // Safety ke liye interval bhi laga sakte hain (Agar same page par logout ho raha ho)
+    // Safety interval
     const interval = setInterval(loadUserData, 1000); 
 
     return () => {
@@ -49,17 +49,21 @@ function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-40 flex justify-between items-center bg-white/70 backdrop-blur-xl px-10 py-5 border-b border-slate-200/60 shadow-sm">
+    <header className="sticky top-0 z-40 flex flex-wrap justify-between items-center bg-white/70 backdrop-blur-xl px-4 md:px-10 py-3 md:py-5 border-b border-slate-200/60 shadow-sm gap-y-4">
 
-      <img 
-  className="h-12 ml-20 w-auto bg-black p-1 rounded shadow-sm" 
-  src={img} 
-  alt="Global Logo" 
-/>
+      {/* --- Left Section (Logo) --- */}
+      <div className="flex items-center">
+        <img 
+          className="h-8 md:h-12 w-auto bg-black p-1 rounded shadow-sm" 
+          src={img} 
+          alt="Global Logo" 
+        />
+      </div>
 
-      {/* Left Section */}
-      <div className="relative ml-70 w-full max-w-md group">
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+      {/* --- Middle Section (Search Bar) --- */}
+      {/* Mobile pe ye niche aayega full width, Desktop pe center me */}
+      <div className="order-last w-full sm:order-none sm:w-auto sm:flex-1 sm:max-w-md relative group px-1 sm:px-4">
+        <div className="absolute inset-y-0 left-4 sm:left-7 pl-1 flex items-center pointer-events-none">
           <Search className="text-slate-400 group-focus-within:text-blue-500 transition-colors" size={18} />
         </div>
         <input
@@ -69,16 +73,16 @@ function Header() {
         />
       </div>
 
-      {/* Right Section */}
-      <div className="flex items-center gap-6">
-        <div className="relative group cursor-pointer p-2.5 hover:bg-slate-100 rounded-2xl transition-all">
-          <Bell size={21} className="text-slate-500 group-hover:text-blue-600 transition-colors" />
-          <span className="absolute top-2.5 right-2.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white shadow-sm flex items-center justify-center">
+      {/* --- Right Section (Bell & Profile) --- */}
+      <div className="flex items-center gap-3 md:gap-6">
+        <div className="relative group cursor-pointer p-2 md:p-2.5 hover:bg-slate-100 rounded-2xl transition-all">
+          <Bell size={20} className="text-slate-500 group-hover:text-blue-600 transition-colors" />
+          <span className="absolute top-2 right-2 md:top-2.5 md:right-2.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white shadow-sm flex items-center justify-center">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
           </span>
         </div>
 
-        <div className="flex items-center gap-4 pl-4 border-l border-slate-200/80 group">
+        <div className="flex items-center gap-3 md:gap-4 pl-3 md:pl-4 border-l border-slate-200/80 group">
           <div className="text-right hidden md:block">
             <p className="text-sm font-bold text-slate-900 leading-tight">
               {userData.fullName}
@@ -89,17 +93,18 @@ function Header() {
           </div>
 
           <div className="relative">
-            <div className={`w-11 h-11 rounded-2xl flex items-center justify-center text-white shadow-xl border-2 border-white transition-transform duration-300 group-hover:scale-105 ${userData.fullName === "Guest User" ? "bg-slate-400" : "bg-gradient-to-br from-blue-600 to-indigo-700"}`}>
-              <span className="text-sm font-black uppercase tracking-wider">
+            <div className={`w-9 h-9 md:w-11 md:h-11 rounded-xl md:rounded-2xl flex items-center justify-center text-white shadow-xl border-2 border-white transition-transform duration-300 group-hover:scale-105 ${userData.fullName === "Guest User" ? "bg-slate-400" : "bg-gradient-to-br from-blue-600 to-indigo-700"}`}>
+              <span className="text-xs md:text-sm font-black uppercase tracking-wider">
                 {getInitials(userData.fullName)}
               </span>
             </div>
             {userData.fullName !== "Guest User" && (
-              <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-white shadow-sm"></div>
+              <div className="absolute -bottom-1 -right-1 w-3 h-3 md:w-3.5 md:h-3.5 bg-green-500 rounded-full border-2 border-white shadow-sm"></div>
             )}
           </div>
         </div>
       </div>
+      
     </header>
   );
 }
