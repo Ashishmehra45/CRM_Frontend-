@@ -194,7 +194,7 @@ const AdminDashboard = () => {
             </h1>
           </div>
           <p className="text-[10px] text-slate-500 uppercase font-black tracking-[0.3em] ml-1">
-            Admin Suite v2.0
+            Admin Panel
           </p>
         </div>
 
