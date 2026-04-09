@@ -145,7 +145,7 @@ const FDIDashboard = () => {
     localStorage.removeItem("user");
 
     // 2. Sunder sa notification
-    toast.success("Logged out successfully! Milte hain bhai.");
+    toast.success("Logged out successfully see you again!");
 
     // 3. Login page par bhej do
     setTimeout(() => {
@@ -388,7 +388,7 @@ const FDIDashboard = () => {
       }
     } catch (err) {
       console.error(err);
-      toast.error("Data laane mein dikkat hui!");
+      toast.error("Leads are not fetching! Try again.");
     } finally {
       setFetching(false);
     }
