@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import toast, { Toaster } from "react-hot-toast";
 import { useNavigate } from "react-router-dom"; // Ye zaroori hai
+import imglogo from "../assets/im global.png"; // Logo ke liye image import karo
 import {
   Search,
   Bell,
@@ -480,11 +481,9 @@ const FDIDashboard = () => {
       {/* --- SIDEBAR --- */}
       <aside className="w-72 bg-slate-900 text-white flex flex-col fixed left-0 top-0 h-screen shadow-2xl z-50 overflow-y-auto">
         <div className="p-8">
-          <h1 className="text-2xl font-extrabold tracking-tighter text-blue-400">
-            IM<span className="text-white">GLOBAL</span>
-          </h1>
-          <p className="text-xs text-slate-400 mt-1 uppercase tracking-widest">
-            CRM
+         <img className="h-20 w-20 mt-[-30px]" src={imglogo} alt="IMGLOBAL Logo" />
+          <p className="text-xs font-extrabold mt-[-5px] ml-[10px] text-slate-100  uppercase tracking-widest">
+            CRM  <span className="text-blue-500">Portal</span>
           </p>
         </div>
 
