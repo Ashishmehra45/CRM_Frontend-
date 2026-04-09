@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Search, Bell } from 'lucide-react';
+import img from "../assets/im global.png";
 
 function Header() {
   const [userData, setUserData] = useState({ fullName: "Guest User" });
@@ -49,7 +50,13 @@ function Header() {
 
   return (
     <header className="sticky top-0 z-40 flex justify-between items-center bg-white/70 backdrop-blur-xl px-10 py-5 border-b border-slate-200/60 shadow-sm">
-      
+
+      <img 
+  className="h-12 ml-20 w-auto bg-black p-1 rounded shadow-sm" 
+  src={img} 
+  alt="Global Logo" 
+/>
+
       {/* Left Section */}
       <div className="relative ml-70 w-full max-w-md group">
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
