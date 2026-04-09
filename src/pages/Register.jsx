@@ -3,6 +3,7 @@ import { User, Mail, Lock, ArrowRight, ShieldCheck } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import toast, { Toaster } from "react-hot-toast";
+import { API_URL } from "../config/config";
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -19,7 +20,7 @@ const Register = () => {
 
     try {
       // Backend API Call (Check kar lena server 5000 pe chal raha hai ya nahi)
-      const res = await axios.post("http://localhost:5000/api/workers/register", formData);
+      const res = await axios.post(`${API_URL}/workers/register`, formData);
       
       if (res.data) {
         toast.success("Worker Account Created! Redirecting to Login...");
