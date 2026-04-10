@@ -34,6 +34,7 @@ const AdminDashboard = () => {
   const [fetchingLeads, setFetchingLeads] = useState(false);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  
 
   // Tabs: 'overview', 'team', 'leads', 'view-lead'
   const [activeTab, setActiveTab] = useState("overview");
@@ -44,6 +45,7 @@ const AdminDashboard = () => {
   const [selectedLead, setSelectedLead] = useState(null); // For Timeline
   const [selectedLeadForView, setSelectedLeadForView] = useState({}); // For Full Page View
   const [newNote, setNewNote] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("All");
 
   const fetchStats = async () => {
     setLoading(true);
@@ -61,6 +63,8 @@ const AdminDashboard = () => {
       setLoading(false);
     }
   };
+
+  
 
   const fetchAllLeads = async () => {
     setFetchingLeads(true);
@@ -238,9 +242,9 @@ const AdminDashboard = () => {
         {/* =========================================
             TAB 1 & 2: OVERVIEW & TEAM 
             ========================================= */}
-        {(activeTab === "overview" || activeTab === "team") && (
+      {(activeTab === "overview" || activeTab === "team") && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            {/* Same Code As Before for Overview & Team */}
+            {/* --- HEADER --- */}
             <div className="flex justify-between items-center mb-12">
               <div>
                 <h1 className="text-4xl font-black text-slate-900 tracking-tight mb-2">
@@ -265,33 +269,113 @@ const AdminDashboard = () => {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
-              <div
-                className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/50 group cursor-pointer"
-                onClick={() => setActiveTab("leads")}
-              >
-                <FileText size={28} className="text-blue-600 mb-6" />
-                <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">
-                  Total System Leads
-                </p>
-                <h3 className="text-5xl font-black text-slate-900 tracking-tighter">
-                  {data.totalLeads}
-                </h3>
+            {/* --- STATS CARDS SECTION (ALL WHITE & PREMIUM) --- */}
+            <div className="flex flex-col gap-6 mb-12">
+              
+              {/* TOP ROW: Main Stats */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div
+                  className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/40 hover:-translate-y-1 hover:shadow-2xl hover:shadow-blue-200/30 transition-all duration-300 cursor-pointer flex justify-between items-center group"
+                  onClick={() => setActiveTab("leads")}
+                >
+                  <div>
+                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">
+                      Total System Leads
+                    </p>
+                    <h3 className="text-5xl font-black text-slate-900 tracking-tighter">
+                      {data.totalLeads || 0}
+                    </h3>
+                  </div>
+                  <div className="w-20 h-20 bg-blue-50 border-4 border-white shadow-inner rounded-[1.5rem] flex items-center justify-center text-blue-600 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
+                    <FileText size={32} />
+                  </div>
+                </div>
+
+                <div
+                  className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/40 hover:-translate-y-1 hover:shadow-2xl hover:shadow-indigo-200/30 transition-all duration-300 cursor-pointer flex justify-between items-center group"
+                  onClick={() => setActiveTab("team")}
+                >
+                  <div>
+                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">
+                      Active Team
+                    </p>
+                    <h3 className="text-5xl font-black text-slate-900 tracking-tighter">
+                      {data.workerBreakdown?.length || 0}
+                    </h3>
+                  </div>
+                  <div className="w-20 h-20 bg-indigo-50 border-4 border-white shadow-inner rounded-[1.5rem] flex items-center justify-center text-indigo-600 group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-300">
+                    <UserPlus size={32} />
+                  </div>
+                </div>
               </div>
-              <div
-                className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-xl shadow-slate-200/50 group cursor-pointer"
-                onClick={() => setActiveTab("team")}
-              >
-                <UserPlus size={28} className="text-indigo-600 mb-6" />
-                <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">
-                  Active Team
-                </p>
-                <h3 className="text-5xl font-black text-slate-900 tracking-tighter">
-                  {data.workerBreakdown.length}
-                </h3>
-              </div>
+
+              {/* BOTTOM ROW: Category Breakdown */}
+              {activeTab === "overview" && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+                  {/* FDI Card */}
+                  <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-lg shadow-slate-200/40 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group">
+                    <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                      <FileText size={20} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                        FDI Leads
+                      </p>
+                      <h3 className="text-3xl font-black text-slate-800 tracking-tighter">
+                        {data.workerBreakdown?.reduce((sum, w) => sum + (w.fdi || 0), 0) || 0}
+                      </h3>
+                    </div>
+                  </div>
+
+                  {/* CIP Card */}
+                  <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-lg shadow-slate-200/40 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group">
+                    <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                      <FileText size={20} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                        CIP Leads
+                      </p>
+                      <h3 className="text-3xl font-black text-slate-800 tracking-tighter">
+                        {data.workerBreakdown?.reduce((sum, w) => sum + (w.cip || 0), 0) || 0}
+                      </h3>
+                    </div>
+                  </div>
+
+                  {/* Nat. PMU Card */}
+                  <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-lg shadow-slate-200/40 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group">
+                    <div className="w-12 h-12 bg-orange-50 text-orange-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                      <FileText size={20} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                        Nat. PMU
+                      </p>
+                      <h3 className="text-3xl font-black text-slate-800 tracking-tighter">
+                        {data.workerBreakdown?.reduce((sum, w) => sum + (w.pmu || 0), 0) || 0}
+                      </h3>
+                    </div>
+                  </div>
+
+                  {/* Representation Card */}
+                  <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-lg shadow-slate-200/40 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group">
+                    <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                      <FileText size={20} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                        Representation
+                      </p>
+                      <h3 className="text-3xl font-black text-slate-800 tracking-tighter">
+                        {data.workerBreakdown?.reduce((sum, w) => sum + (w.representation || 0), 0) || 0}
+                      </h3>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
+            {/* --- WORKER DETAILS TABLE --- */}
             <div className="bg-white rounded-[3rem] border border-slate-100 shadow-2xl shadow-slate-200/60 overflow-hidden">
               <div className="p-10 flex justify-between items-center bg-slate-50/50 border-b border-slate-100">
                 <h2 className="text-2xl font-black text-slate-800">
@@ -381,122 +465,134 @@ const AdminDashboard = () => {
         {/* =========================================
             TAB 3: LEADS PIPELINE TABLE
             ========================================= */}
-        {activeTab === "leads" && (
-          <div className="animate-in fade-in slide-in-from-right-4 duration-500">
-            <div className="flex justify-between items-end mb-10">
-              <div>
-                <h1 className="text-4xl font-black text-slate-900 tracking-tight leading-none mb-3">
-                  Lead <span className="text-blue-600">Surveillance</span>
-                </h1>
-                <p className="text-slate-500 font-medium italic">
-                  Track every move made by workers on leads.
-                </p>
-              </div>
-              <div className="relative w-80">
-                <Search
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                  size={18}
-                />
-                <input
-                  type="text"
-                  placeholder="Search by Company or Name..."
-                  className="w-full bg-white pl-12 pr-6 py-4 rounded-2xl border border-slate-200 outline-none font-bold shadow-sm"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-            </div>
+       {activeTab === "leads" && (
+  <div className="animate-in fade-in slide-in-from-right-4 duration-500">
+    {/* --- HEADER & FILTERS --- */}
+    <div className="flex justify-between items-end mb-10">
+      <div>
+        <h1 className="text-4xl font-black text-slate-900 tracking-tight leading-none mb-3">
+          Lead <span className="text-blue-600">Surveillance</span>
+        </h1>
+        <p className="text-slate-500 font-medium italic">
+          Track every move made by workers on leads.
+        </p>
+      </div>
 
-            <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-2xl shadow-slate-200/50 overflow-hidden">
-              <table className="w-full text-left">
-                <thead>
-                  <tr className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] bg-slate-50/50 border-b border-slate-100">
-                    <th className="px-10 py-6">Lead Entity</th>
-                    <th className="px-6 py-6">Contact Person</th>
-                    <th className="px-6 py-6 text-center">Category</th>
-                    <th className="px-6 py-6">Handler (Worker)</th>
-                    <th className="px-6 py-6 text-right">Access Timeline</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {fetchingLeads ? (
-                    <tr>
-                      <td
-                        colSpan="5"
-                        className="p-20 text-center text-blue-600 font-bold"
-                      >
-                        <RefreshCw className="animate-spin inline mr-2" />{" "}
-                        Fetching Database...
-                      </td>
-                    </tr>
-                  ) : filteredLeads.length === 0 ? (
-                    <tr>
-                      <td
-                        colSpan="5"
-                        className="p-20 text-center text-slate-400 font-bold"
-                      >
-                        No leads found in database.
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredLeads.map((lead, idx) => (
-                      // 🔥 YAHAN ROW CLICK PAR FULL DETAILS PAGE KHULEGA
-                      <tr
-                        key={idx}
-                        onClick={() => {
-                          setSelectedLeadForView(lead);
-                          setActiveTab("view-lead");
-                        }}
-                        className="hover:bg-blue-50/30 cursor-pointer transition-all group"
-                      >
-                        <td className="px-10 py-6">
-                          <p className="font-black text-slate-800 text-lg uppercase leading-none mb-1">
-                            {lead.companyName || "N/A"}
-                          </p>
-                          <p className="text-[10px] text-blue-600 font-bold uppercase tracking-widest">
-                            {lead.country || "N/A"}
-                          </p>
-                        </td>
-                        <td className="px-6 py-6">
-                          <span className="font-bold text-slate-700">
-                            {lead.firstName} {lead.lastName}
-                          </span>
-                        </td>
-                        <td className="px-6 py-6 text-center">
-                          <span className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-black uppercase tracking-widest">
-                            {lead.category || "N/A"}
-                          </span>
-                        </td>
-                        <td className="px-6 py-6">
-                          <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center text-[10px] font-black uppercase">
-                              {lead.workerName?.charAt(0) || "W"}
-                            </div>
-                            <span className="font-bold text-slate-700 text-sm uppercase">
-                              {lead.workerName || "Unknown"}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-10 py-6 text-right">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation(); // 🔥 Row click ko rokne ke liye
-                              setSelectedLead(lead);
-                              setIsTimelineOpen(true);
-                            }}
-                            className="px-5 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-blue-600 transition-all shadow-md active:scale-95 font-bold text-xs flex items-center gap-2 ml-auto"
-                          >
-                            <Clock size={14} /> Timeline
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
+      <div className="flex items-center gap-4">
+        {/* 🔥 Category Filter Dropdown */}
+        <select
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+          className="bg-white px-5 py-4 rounded-2xl border border-slate-200 outline-none font-bold text-sm text-slate-600 shadow-sm cursor-pointer"
+        >
+          <option value="All">All Categories</option>
+          <option value="FDI">FDI Leads</option>
+          <option value="CIP">CIP Leads</option>
+          <option value="NATIONAL PMU">National PMU</option>
+          <option value="REPRESENTATION">Representation</option>
+        </select>
+
+        {/* Search Bar */}
+        <div className="relative w-80">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+          <input
+            type="text"
+            placeholder="Search Company or Name..."
+            className="w-full bg-white pl-12 pr-6 py-4 rounded-2xl border border-slate-200 outline-none font-bold shadow-sm"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+      </div>
+    </div>
+
+    {/* --- TABLE --- */}
+    <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-2xl shadow-slate-200/50 overflow-hidden">
+      <table className="w-full text-left">
+        <thead>
+          <tr className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] bg-slate-50/50 border-b border-slate-100">
+            <th className="px-10 py-6">Lead Entity</th>
+            <th className="px-6 py-6">Contact Person</th>
+            <th className="px-6 py-6 text-center">Category</th>
+            <th className="px-6 py-6">Handler (Worker)</th>
+            <th className="px-6 py-6 text-right">Access Timeline</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-50">
+          {fetchingLeads ? (
+            <tr><td colSpan="5" className="p-20 text-center text-blue-600 font-bold italic">Fetching Database...</td></tr>
+          ) : (
+            // 🔥 ISMATCHING LOGIC START
+            (leadsData || []).map((lead, idx) => {
+              const matchesSearch = 
+                (lead.companyName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+                (`${lead.firstName} ${lead.lastName}`).toLowerCase().includes(searchTerm.toLowerCase());
+
+              const matchesCategory = 
+                categoryFilter === "All" || 
+                (lead.category || "").toUpperCase() === categoryFilter.toUpperCase();
+
+              // Agar dono match nahi kar rahe toh return null (kuch mat dikhao)
+              if (!matchesSearch || !matchesCategory) return null;
+
+              return (
+                <tr
+                  key={idx}
+                  onClick={() => {
+                    setSelectedLeadForView(lead);
+                    setActiveTab("view-lead");
+                  }}
+                  className="hover:bg-blue-50/30 cursor-pointer transition-all group"
+                >
+                  <td className="px-10 py-6">
+                    <p className="font-black text-slate-800 text-lg uppercase leading-none mb-1">
+                      {lead.companyName || "N/A"}
+                    </p>
+                    <p className="text-[10px] text-blue-600 font-bold uppercase tracking-widest">
+                      {lead.country || "N/A"}
+                    </p>
+                  </td>
+                  <td className="px-6 py-6">
+                    <span className="font-bold text-slate-700">
+                      {lead.firstName} {lead.lastName}
+                    </span>
+                  </td>
+                  <td className="px-6 py-6 text-center">
+                    <span className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-black uppercase tracking-widest">
+                      {lead.category || "N/A"}
+                    </span>
+                  </td>
+                  <td className="px-6 py-6">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center text-[10px] font-black uppercase">
+                        {lead.workerName?.charAt(0) || "W"}
+                      </div>
+                      <span className="font-bold text-slate-700 text-sm uppercase">
+                        {lead.workerName || "Unknown"}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-10 py-6 text-right">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedLead(lead);
+                        setIsTimelineOpen(true);
+                      }}
+                      className="px-5 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-blue-600 transition-all shadow-md active:scale-95 font-bold text-xs flex items-center gap-2 ml-auto"
+                    >
+                      <Clock size={14} /> Timeline
+                    </button>
+                  </td>
+                </tr>
+              );
+            })
+          )}
+        </tbody>
+      </table>
+    </div>
+  </div>
+)}
 
         {/* =========================================
             🔥 TAB 4: VIEW FULL LEAD DETAILS (READ ONLY)
