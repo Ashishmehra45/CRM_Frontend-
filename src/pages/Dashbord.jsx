@@ -4,10 +4,13 @@ import toast, { Toaster } from "react-hot-toast";
 import { useNavigate } from "react-router-dom"; // Ye zaroori hai
 import imglogo from "../assets/im global.png"; // Logo ke liye image import karo
 import {
+  Edit2, Trash2,
   Search,
   Bell,
-  Menu, 
-  
+  Menu,
+  Flame,
+  Target,
+  XCircle,
   Sparkles,
   LayoutDashboard,
   UserPlus,
@@ -53,6 +56,10 @@ const FDIDashboard = () => {
   const [selectedLead, setSelectedLead] = useState(null);
   const [newNote, setNewNote] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  // 2. Component ke andar apni existing Timeline states ke niche ye daal de
+const [noteLoading, setNoteLoading] = useState(false); // Double submit rokne ke liye
+const [editingNoteId, setEditingNoteId] = useState(null); // Edit mode track karne ke liye
+const [editNoteText, setEditNoteText] = useState("");
 
   const handleUpdateLead = async (e) => {
     e.preventDefault();
@@ -109,6 +116,9 @@ const FDIDashboard = () => {
     }
   };
 
+  
+  
+
   // API Call: Add Timeline Note
   const handleAddNote = async (e) => {
     e.preventDefault();
@@ -157,14 +167,161 @@ const FDIDashboard = () => {
     }, 1000);
   };
 
-  const continents = [
-    "Africa",
-    "Asia",
-    "Europe",
-    "North America",
-    "Oceania",
-    "South America",
-  ];
+  // 🔥 UPDATE: Prevent double submit logic
+  const handleaddNote = async (e) => {
+    e?.preventDefault(); // ? isliye taki Enter key se call ho toh error na aaye
+    if (!newNote.trim() || noteLoading) return; // Agar pehle se load ho raha hai toh ruk jao
+
+    setNoteLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await axios.post(
+        `${API_URL}/workers/add-note/${selectedLead._id}`,
+        { note: newNote },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (res.data.success) {
+        toast.success("Note added successfully!");
+        setNewNote("");
+        setSelectedLead((prev) => ({ ...prev, timeline: res.data.timeline }));
+        fetchLeads(activeTab);
+      }
+    } catch (err) {
+      toast.error("Note save nahi hua bhai!");
+    } finally {
+      setNoteLoading(false);
+    }
+  };
+
+  // 🔥 NEW: Enter key se submit karne ka logic (Shift+Enter se new line aayegi)
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+     handleaddNote();
+    }
+  };
+
+  // 🔥 NEW: Delete Note Function
+ // 🔥 NEW: Delete Note Function with Custom Toast Alert
+  const handleDeleteNote = (noteId) => {
+    toast((t) => (
+      <div className="flex flex-col gap-3">
+        <p className="font-semibold text-slate-800">Delete this note?</p>
+       
+        <div className="flex justify-end gap-2 mt-2">
+          <button 
+            onClick={() => toast.dismiss(t.id)} 
+            className="px-3 py-1.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-md transition-colors"
+          >
+            Cancel
+          </button>
+          <button 
+            onClick={async () => {
+              toast.dismiss(t.id); // Pehle toast hatao
+              try {
+                const token = localStorage.getItem("token");
+                const res = await axios.delete(`${API_URL}/workers/delete-note/${selectedLead._id}/${noteId}`, {
+                  headers: { Authorization: `Bearer ${token}` }
+                });
+                
+                if (res.data.success) {
+                  toast.success("Note deleted successfully!");
+                  setSelectedLead((prev) => ({ ...prev, timeline: res.data.timeline }));
+                  fetchLeads(activeTab);
+                }
+              } catch (err) {
+                toast.error(err.response?.data?.message || "Failed to delete note!");
+              }
+            }} 
+            className="px-3 py-1.5 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    ), {
+      duration: Infinity, // Jab tak user action na le, ye toast gayab nahi hoga
+      position: "top-center",
+    });
+  };
+
+  // 🔥 NEW: Edit Note Function
+  const handleEditNoteSubmit = async (noteId) => {
+    if (!editNoteText.trim()) return;
+    try {
+      const token = localStorage.getItem("token");
+      // Note: Backend me ye route banana padega
+      const res = await axios.put(
+        `${API_URL}/workers/edit-note/${selectedLead._id}/${noteId}`,
+        { note: editNoteText },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (res.data.success) {
+        toast.success("Note updated!");
+        setEditingNoteId(null);
+        setSelectedLead((prev) => ({ ...prev, timeline: res.data.timeline }));
+        fetchLeads(activeTab);
+      }
+    } catch (err) {
+      toast.error("Failed to update note!");
+    }
+  };
+  // 🔥 NEW: Delete Lead Function with Custom Confirmation Toast
+  const handleDeleteLead = (e) => {
+    e.preventDefault();
+    
+    if (!formData._id) {
+      return toast.error("Lead ID not found!");
+    }
+
+    toast((t) => (
+      <div className="flex flex-col gap-3">
+        <p className="font-semibold text-slate-800">Delete this entire lead?</p>
+        <p className="text-xs text-slate-500">This action cannot be undone. All timeline notes will also be deleted.</p>
+        <div className="flex justify-end gap-2 mt-2">
+          <button 
+            onClick={() => toast.dismiss(t.id)} 
+            className="px-3 py-1.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-md transition-colors"
+          >
+            Cancel
+          </button>
+          <button 
+            onClick={async () => {
+              toast.dismiss(t.id); // Pehle toast hatao
+              setLoading(true);
+              try {
+                const token = localStorage.getItem("token");
+                // Backend call (Tera backend delete route)
+                const res = await axios.delete(`${API_URL}/workers/delete-lead/${formData._id}`, {
+                  headers: { Authorization: `Bearer ${token}` }
+                });
+                
+                if (res.data.success) {
+                  toast.success("Lead deleted successfully!");
+                  setIsEditMode(false);
+                  setFormData({}); // Form clear
+                  setActiveTab("dashboard"); // Wapas table pe bhejo
+                  fetchLeads("dashboard"); // List refresh karo
+                }
+              } catch (err) {
+                toast.error(err.response?.data?.message || "Failed to delete lead!");
+              } finally {
+                setLoading(false);
+              }
+            }} 
+            className="px-3 py-1.5 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors"
+          >
+            Yes, Delete Lead
+          </button>
+        </div>
+      </div>
+    ), {
+      duration: Infinity, 
+      position: "top-center",
+    });
+  };
+
 
   const countries = [
     "Afghanistan",
@@ -482,7 +639,7 @@ const FDIDashboard = () => {
     <div className="flex min-h-screen bg-gray-50 font-sans">
       <Toaster position="top-center" />
       {/* --- SIDEBAR --- */}
-     {/* 🔥 MOBILE HEADER (Sirf choti screen par dikhega) */}
+      {/* 🔥 MOBILE HEADER (Sirf choti screen par dikhega) */}
       <div className="md:hidden fixed top-0 w-full bg-slate-900 text-white z-[60] flex justify-between items-center px-6 py-4 shadow-md">
         <div className="flex items-center gap-2">
           <img className="h-8 w-8 object-contain" src={imglogo} alt="Logo" />
@@ -490,8 +647,8 @@ const FDIDashboard = () => {
             CRM <span className="text-blue-500">Portal</span>
           </p>
         </div>
-        <button 
-          onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
+        <button
+          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
           className="p-2 bg-slate-800 rounded-lg hover:bg-slate-700 transition-colors"
         >
           {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
@@ -500,20 +657,25 @@ const FDIDashboard = () => {
 
       {/* 🔥 SIDEBAR OVERLAY (Mobile ke liye jab menu khula ho) */}
       {isSidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/60 z-[40] md:hidden backdrop-blur-sm transition-opacity"
           onClick={() => setIsSidebarOpen(false)}
         ></div>
       )}
 
       {/* --- SIDEBAR --- */}
-      <aside className={`fixed inset-y-0 left-0 z-[50] w-72 bg-slate-900 text-white flex flex-col h-screen shadow-2xl overflow-y-auto transform transition-transform duration-300 ease-in-out ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0`}>
-        
+      <aside
+        className={`fixed inset-y-0 left-0 z-[50] w-72 bg-slate-900 text-white flex flex-col h-screen shadow-2xl overflow-y-auto transform transition-transform duration-300 ease-in-out ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0`}
+      >
         {/* Desktop Logo Area (Mobile pe hide kiya hai kyunki top header me hai) */}
         <div className="p-8 hidden md:block">
-         <img className="h-20 w-20 mt-[-30px]" src={imglogo} alt="IMGLOBAL Logo" />
+          <img
+            className="h-20 w-20 mt-[-30px]"
+            src={imglogo}
+            alt="IMGLOBAL Logo"
+          />
           <p className="text-xs font-extrabold mt-[-5px] ml-[10px] text-slate-100 uppercase tracking-widest">
-            CRM  <span className="text-blue-500">Portal</span>
+            CRM <span className="text-blue-500">Portal</span>
           </p>
         </div>
 
@@ -583,7 +745,7 @@ const FDIDashboard = () => {
 
         <div className="p-6 border-t border-slate-800 mt-4">
           <button
-            onClick={handleLogout} 
+            onClick={handleLogout}
             className="flex items-center gap-3 text-slate-400 hover:text-red-400 transition-colors w-full"
           >
             <LogOut size={18} /> <span>Logout</span>
@@ -617,33 +779,34 @@ const FDIDashboard = () => {
               </button>
             </div>
 
+           
             {/* --- STATS CARDS SECTION --- */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6 mb-8">
               {/* 1. Total Leads */}
-              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-5">
-                <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center">
+              <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4 md:gap-5">
+                <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center shrink-0">
                   <Briefcase size={24} />
                 </div>
                 <div>
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                     Total Leads
                   </p>
-                  <h3 className="text-2xl font-black text-slate-800">
+                  <h3 className="text-xl md:text-2xl font-black text-slate-800">
                     {leadsData.length}
                   </h3>
                 </div>
               </div>
 
               {/* 2. Contacted (Active) */}
-              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-5">
-                <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center">
+              <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4 md:gap-5">
+                <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center shrink-0">
                   <Activity size={24} />
                 </div>
                 <div>
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                     Contacted
                   </p>
-                  <h3 className="text-2xl font-black text-slate-800">
+                  <h3 className="text-xl md:text-2xl font-black text-slate-800">
                     {
                       leadsData.filter((l) => l.leadStatus === "Contacted")
                         .length
@@ -653,15 +816,15 @@ const FDIDashboard = () => {
               </div>
 
               {/* 3. Attempted to Contact */}
-              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-5">
-                <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center">
+              <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4 md:gap-5">
+                <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center shrink-0">
                   <Clock size={24} />
                 </div>
                 <div>
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                     Attempted
                   </p>
-                  <h3 className="text-2xl font-black text-slate-800">
+                  <h3 className="text-xl md:text-2xl font-black text-slate-800">
                     {
                       leadsData.filter(
                         (l) => l.leadStatus === "Attempted to contact",
@@ -670,7 +833,70 @@ const FDIDashboard = () => {
                   </h3>
                 </div>
               </div>
+
+             
+             {/* 4. 🔥 Hot Leads */}
+              <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4 md:gap-5">
+                <div className="w-12 h-12 bg-orange-50 text-orange-500 rounded-xl flex items-center justify-center shrink-0">
+                  <Flame size={24} />
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    Hot Leads
+                  </p>
+                  <h3 className="text-xl md:text-2xl font-black text-slate-800">
+                    {/* 🔥 FIX: Exact match for 'Hot Leads' ensuring no typo issues */}
+                    {leadsData.filter((l) => 
+                      l.leadStatus === "Hot Leads" || 
+                      l.leadStatus === "Hot Lead" || 
+                      l.leadStatus === "Pre Qualified"
+                    ).length}
+                  </h3>
+                </div>
+              </div>
+
+              {/* 5. 🎯 Acquired */}
+              <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4 md:gap-5">
+                <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center shrink-0">
+                  <Target size={24} />
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    Acquired
+                  </p>
+                  <h3 className="text-xl md:text-2xl font-black text-slate-800">
+                    {/* Rating me Acquired check ho raha hai */}
+                    {
+                      leadsData.filter(
+                        (l) =>
+                          l.rating === "Acquired" ||
+                          l.leadStatus === "Acquired",
+                      ).length
+                    }
+                  </h3>
+                </div>
+              </div>
+
+              {/* 6. ❌ Lost Leads */}
+              <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4 md:gap-5">
+                <div className="w-12 h-12 bg-red-50 text-red-600 rounded-xl flex items-center justify-center shrink-0">
+                  <XCircle size={24} />
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    Lost Leads
+                  </p>
+                  <h3 className="text-xl md:text-2xl font-black text-slate-800">
+                    {
+                      leadsData.filter((l) => l.leadStatus === "Lost Lead")
+                        .length
+                    }
+                  </h3>
+                </div>
+              </div>
             </div>
+
+          
 
             {/* --- TABLE SECTION --- */}
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
@@ -732,14 +958,21 @@ const FDIDashboard = () => {
                               {lead.category || "None"}
                             </span>
                           </td>
-                          <td className="p-5">
-                            <span
+                         <td className="p-4 md:p-5">
+                            <span 
                               className={`px-3 py-1 text-[10px] uppercase font-black tracking-wider rounded-full ${
-                                lead.leadStatus === "Contacted"
-                                  ? "bg-emerald-100 text-emerald-700"
-                                  : lead.leadStatus === "Lost Lead"
-                                    ? "bg-red-100 text-red-700"
-                                    : "bg-amber-100 text-amber-700"
+                                lead.leadStatus === "Contacted" 
+                                  ? "bg-emerald-100 text-emerald-700" 
+                                : lead.leadStatus === "Lost Lead" 
+                                  ? "bg-red-100 text-red-700" 
+                                // 🔥 NAYE COLORS ADD KIYE HAIN:
+                                : lead.leadStatus === "Hot Leads" 
+                                  ? "bg-orange-100 text-orange-700" 
+                                : lead.leadStatus === "Acquired" 
+                                  ? "bg-purple-100 text-purple-700" 
+                                : lead.leadStatus === "Junk Lead" || lead.leadStatus === "Not Qualified"
+                                  ? "bg-slate-200 text-slate-600"
+                                : "bg-amber-100 text-amber-700" // Default for Attempted, Pre Qualified, etc.
                               }`}
                             >
                               {lead.leadStatus || "New"}
@@ -784,37 +1017,7 @@ const FDIDashboard = () => {
                     : "Enter new investor details into the system."}
                 </p>
               </div>
-              <div className="flex gap-4">
-                <button
-                  onClick={() => {
-                    setIsEditMode(false);
-                    setFormData({});
-                    setActiveTab("dashboard");
-                  }}
-                  className="px-6 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 hover:border-slate-400 transition-all shadow-sm"
-                >
-                  Cancel
-                </button>
-
-                {/* --- DYNAMIC BUTTON (SAVE OR UPDATE) --- */}
-                {isEditMode ? (
-                  <button
-                    onClick={handleUpdateLead}
-                    disabled={loading}
-                    className="px-8 py-2.5 bg-orange-600 text-white rounded-lg text-sm font-semibold hover:bg-orange-700 transition-all shadow-md shadow-orange-200 active:scale-95 disabled:opacity-70"
-                  >
-                    {loading ? "Updating..." : "Update Changes"}
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleSaveLead}
-                    disabled={loading}
-                    className="px-8 py-2.5 bg-[#0f62fe] text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-all shadow-md shadow-blue-200 active:scale-95 disabled:opacity-70"
-                  >
-                    {loading ? "Saving..." : "Save Lead"}
-                  </button>
-                )}
-              </div>
+              {/* Buttons yahan se hata diye gaye hain */}
             </div>
 
             <div className="bg-white rounded-xl shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] border border-slate-200 overflow-hidden">
@@ -842,26 +1045,6 @@ const FDIDashboard = () => {
                         placeholder="Enter company name"
                         className="flex-1 p-2.5 bg-white border border-slate-300 rounded-md text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
                       />
-                    </div>
-
-                    {/* 2. CONTINENT */}
-                    <div className="flex items-center gap-6">
-                      <label className="w-64 text-sm font-medium text-slate-600">
-                        Continent
-                      </label>
-                      <select
-                        name="continent"
-                        value={formData.continent || ""}
-                        onChange={handleInputChange}
-                        className="flex-1 p-2.5 bg-white border border-slate-300 rounded-md text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all cursor-pointer"
-                      >
-                        <option value="">-None-</option>
-                        {continents.map((c) => (
-                          <option key={c} value={c}>
-                            {c}
-                          </option>
-                        ))}
-                      </select>
                     </div>
 
                     {/* 3. COUNTRY / REGION */}
@@ -997,13 +1180,14 @@ const FDIDashboard = () => {
                     <div className="space-y-5">
                       <div className="flex items-center gap-4">
                         <label className="w-48 text-sm font-medium text-slate-600">
-                          Lead Owner
+                          Title
                         </label>
                         <input
+                          name="title"
+                          value={formData.title || ""}
+                          onChange={handleInputChange}
                           type="text"
-                          value={loggedInUser.fullName || ""} // Safety ke liye || ""
-                          disabled
-                          className="flex-1 p-2.5 bg-slate-100 border border-slate-200 rounded-md text-sm text-slate-500 cursor-not-allowed"
+                          className="flex-1 p-2.5 border border-slate-300 rounded-md text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
                         />
                       </div>
 
@@ -1017,19 +1201,6 @@ const FDIDashboard = () => {
                           onChange={handleInputChange}
                           type="text"
                           placeholder="-None-"
-                          className="flex-1 p-2.5 border border-slate-300 rounded-md text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
-                        />
-                      </div>
-
-                      <div className="flex items-center gap-4">
-                        <label className="w-48 text-sm font-medium text-slate-600">
-                          Title
-                        </label>
-                        <input
-                          name="title"
-                          value={formData.title || ""}
-                          onChange={handleInputChange}
-                          type="text"
                           className="flex-1 p-2.5 border border-slate-300 rounded-md text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
                         />
                       </div>
@@ -1250,6 +1421,8 @@ const FDIDashboard = () => {
                           className="flex-1 p-2.5 border border-slate-300 rounded-md text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all cursor-pointer"
                         >
                           <option value="">-None-</option>
+                          <option>Acquired</option>
+                          <option>Hot Leads</option>
                           <option>Attempted to contact</option>
                           <option>Contact in future</option>
                           <option>Contacted</option>
@@ -1357,15 +1530,66 @@ const FDIDashboard = () => {
                     placeholder="Enter additional information..."
                   ></textarea>
                 </section>
+
+                {/* 🔥 ACTION BUTTONS (MOVED TO THE BOTTOM) 🔥 */}
+                <div className="flex justify-end gap-4 pt-4 mt-8 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsEditMode(false);
+                      setFormData({});
+                      setActiveTab("dashboard");
+                    }}
+                    className="px-6 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-50 hover:border-slate-400 transition-all shadow-sm"
+                  >
+                    Cancel
+                  </button>
+
+                  {/* --- DYNAMIC BUTTON (SAVE OR UPDATE) --- */}
+                 {/* --- DYNAMIC BUTTON (SAVE OR UPDATE/DELETE) --- */}
+                {isEditMode ? (
+                  <div className="flex gap-4">
+                    {/* 🔥 NEW: Delete Button */}
+                    <button
+                      type="button"
+                      onClick={handleDeleteLead}
+                      disabled={loading}
+                      className="px-8 py-2.5 bg-red-600 text-white rounded-lg text-sm font-semibold hover:bg-red-700 transition-all shadow-md shadow-red-200 active:scale-95 disabled:opacity-70"
+                    >
+                      Delete Lead
+                    </button>
+
+                    {/* Purana Update Button */}
+                    <button
+                      type="button"
+                      onClick={handleUpdateLead}
+                      disabled={loading}
+                      className="px-8 py-2.5 bg-orange-600 text-white rounded-lg text-sm font-semibold hover:bg-orange-700 transition-all shadow-md shadow-orange-200 active:scale-95 disabled:opacity-70"
+                    >
+                      {loading ? "Updating..." : "Update Changes"}
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleSaveLead}
+                    disabled={loading}
+                    className="px-8 py-2.5 bg-[#0f62fe] text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-all shadow-md shadow-blue-200 active:scale-95 disabled:opacity-70"
+                  >
+                    {loading ? "Saving..." : "Save Lead"}
+                  </button>
+                )}
+                </div>
+
               </form>
             </div>
           </div>
         )}
 
-         {isTimelineOpen && selectedLead && (
+       {isTimelineOpen && selectedLead && (
           <div className="fixed inset-0 z-[100] flex justify-end bg-slate-900/20 backdrop-blur-[1px] transition-all">
-            {/* Panel Card */}
             <div className="w-full max-w-md bg-white h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+              
               {/* Header */}
               <div className="p-6 border-b border-slate-100 flex justify-between items-start bg-slate-50/50">
                 <div>
@@ -1373,8 +1597,7 @@ const FDIDashboard = () => {
                     {selectedLead.companyName}
                   </h2>
                   <p className="text-sm font-medium text-slate-500 mt-1 flex items-center gap-2">
-                    <User size={14} /> {selectedLead.firstName}{" "}
-                    {selectedLead.lastName}
+                    <User size={14} /> {selectedLead.firstName} {selectedLead.lastName}
                   </p>
                 </div>
                 <button
@@ -1386,80 +1609,83 @@ const FDIDashboard = () => {
               </div>
 
               {/* Timeline List (Scrollable Area) */}
-            
               <div className="flex-1 overflow-y-auto p-6 bg-slate-50/30">
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
                   <Clock size={14} /> Activity History
                 </h3>
 
-                {/* Timeline Logic */}
                 {!selectedLead.timeline || selectedLead.timeline.length === 0 ? (
                   <div className="text-center py-10">
                     <MessageSquare size={32} className="mx-auto text-slate-300 mb-3" />
-                    <p className="text-sm text-slate-500">
-                      No activity recorded yet.
-                    </p>
+                    <p className="text-sm text-slate-500">No activity recorded yet.</p>
                   </div>
                 ) : (
                   <div className="relative border-l-2 border-slate-200 ml-3 space-y-8">
-                    {/* 🔥 FIX: .reverse() hata diya. Ab chat ki tarah purana upar aur naya niche aayega */}
                     {selectedLead.timeline.map((item, index) => {
-                      // Admin Note check in Worker Dashboard
-                      const isAdminInstruction =
-                        item.type === "admin_instruction" ||
-                        item.addedBy?.toLowerCase().includes("admin");
-
+                      const isAdminInstruction = item.type === "admin_instruction" || item.addedBy?.toLowerCase().includes("admin");
+                      
                       return (
-                        <div key={index} className="relative pl-6">
-                          {/* Dot - Admin ke liye Special Blue/Sparkle, normal ke liye standard */}
-                          <div
-                            className={`absolute -left-[9px] top-1 w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                              isAdminInstruction
-                                ? "bg-blue-600 border-blue-600 shadow-[0_0_10px_rgba(37,99,235,0.4)] z-10"
-                                : "bg-blue-100 border-blue-500"
-                            }`}
-                          >
-                            {isAdminInstruction && (
-                              <Sparkles size={8} className="text-white" />
-                            )}
+                        <div key={item._id || index} className="relative pl-6 group">
+                          <div className={`absolute -left-[9px] top-1 w-4 h-4 rounded-full border-2 flex items-center justify-center ${isAdminInstruction ? "bg-blue-600 border-blue-600 shadow-[0_0_10px_rgba(37,99,235,0.4)] z-10" : "bg-blue-100 border-blue-500"}`}>
+                            {isAdminInstruction && <Sparkles size={8} className="text-white" />}
                           </div>
 
-                          {/* Content Card */}
-                          <div
-                            className={`p-4 rounded-2xl shadow-sm border ${
-                              isAdminInstruction
-                                ? "bg-blue-50/50 border-blue-200"
-                                : "bg-white border-slate-100"
-                            }`}
-                          >
+                          <div className={`p-4 rounded-2xl shadow-sm border ${isAdminInstruction ? "bg-blue-50/50 border-blue-200" : "bg-white border-slate-100"}`}>
+                            
                             <div className="flex justify-between items-start mb-2">
-                              {/* Author Name */}
-                              <span
-                                className={`text-xs font-bold flex items-center gap-1 ${
-                                  isAdminInstruction ? "text-blue-700" : "text-slate-700"
-                                }`}
-                              >
-                                {isAdminInstruction && (
-                                  <Sparkles size={12} className="text-blue-600" />
-                                )}
+                              <span className={`text-xs font-bold flex items-center gap-1 ${isAdminInstruction ? "text-blue-700" : "text-slate-700"}`}>
+                                {isAdminInstruction && <Sparkles size={12} className="text-blue-600" />}
                                 {isAdminInstruction ? " Admin " : item.addedBy}
                               </span>
-                              <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 px-2 py-1 rounded-md">
-                                {new Date(item.timestamp || item.createdAt).toLocaleString(
-                                  "en-IN",
-                                  { dateStyle: "medium", timeStyle: "short" }
+                              
+                              <div className="flex items-center gap-3">
+                                {/* 🔥 EDIT / DELETE BUTTONS (Hover on card to see) */}
+                                {!isAdminInstruction && (
+                                  <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+                                    <button 
+                                      onClick={() => {
+                                        setEditingNoteId(item._id);
+                                        setEditNoteText(item.note || item.text);
+                                      }} 
+                                      className="text-blue-400 hover:text-blue-600 transition-colors"
+                                    >
+                                      <Edit2 size={14} />
+                                    </button>
+                                    <button 
+                                      onClick={() => handleDeleteNote(item._id)} 
+                                      className="text-red-400 hover:text-red-600 transition-colors"
+                                    >
+                                      <Trash2 size={14} />
+                                    </button>
+                                  </div>
                                 )}
-                              </span>
+                                
+                                <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 px-2 py-1 rounded-md">
+                                  {new Date(item.timestamp || item.createdAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}
+                                </span>
+                              </div>
                             </div>
 
-                            {/* Text Content */}
-                            <p
-                              className={`text-sm leading-relaxed whitespace-pre-wrap ${
-                                isAdminInstruction ? "text-blue-900 font-medium" : "text-slate-600"
-                              }`}
-                            >
-                              {item.note || item.text}
-                            </p>
+                            {/* 🔥 TOGGLE BETWEEN TEXT AND EDIT INPUT */}
+                            {editingNoteId === item._id ? (
+                              <div className="mt-2 animate-in fade-in zoom-in-95 duration-200">
+                                <textarea 
+                                  value={editNoteText}
+                                  onChange={(e) => setEditNoteText(e.target.value)}
+                                  className="w-full p-3 bg-white border border-blue-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500/20 resize-none"
+                                  rows="3"
+                                />
+                                <div className="flex justify-end gap-2 mt-2">
+                                  <button onClick={() => setEditingNoteId(null)} className="px-3 py-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-100 rounded-lg transition-colors">Cancel</button>
+                                  <button onClick={() => handleEditNoteSubmit(item._id)} className="px-3 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-md shadow-blue-200 transition-all">Save Changes</button>
+                                </div>
+                              </div>
+                            ) : (
+                              <p className={`text-sm leading-relaxed whitespace-pre-wrap ${isAdminInstruction ? "text-blue-900 font-medium" : "text-slate-600"}`}>
+                                {item.note || item.text}
+                              </p>
+                            )}
+
                           </div>
                         </div>
                       );
@@ -1470,23 +1696,26 @@ const FDIDashboard = () => {
 
               {/* Add Note Input Area (Fixed at bottom) */}
               <div className="p-6 bg-white border-t border-slate-100 shadow-[0_-10px_30px_rgb(0,0,0,0.03)]">
+                {/* Enter key form submission */}
                 <form onSubmit={handleAddNote} className="relative">
                   <textarea
                     value={newNote}
                     onChange={(e) => setNewNote(e.target.value)}
-                    placeholder="Write an update, note, or next step..."
+                    onKeyDown={handleKeyDown} // 🔥 NEW: Enter key listener
+                    placeholder="Write an update... (Press Enter to send)"
                     rows="3"
                     className="w-full p-4 pr-14 bg-slate-50 border border-slate-200 rounded-2xl text-sm outline-none focus:bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all resize-none"
                   ></textarea>
                   <button
                     type="submit"
-                    disabled={!newNote.trim()}
+                    disabled={!newNote.trim() || noteLoading} // 🔥 NEW: Disable during load
                     className="absolute right-3 bottom-4 p-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:hover:bg-blue-600 transition-colors shadow-md shadow-blue-200"
                   >
-                    <Send size={16} />
+                    {noteLoading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <Send size={16} />}
                   </button>
                 </form>
               </div>
+
             </div>
           </div>
         )}
