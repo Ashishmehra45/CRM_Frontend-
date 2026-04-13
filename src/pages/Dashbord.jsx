@@ -1708,7 +1708,7 @@ const FDIDashboard = () => {
                                     className="text-blue-600"
                                   />
                                 )}
-                                {isAdminInstruction ? " Admin " : item.addedBy}
+                                {isAdminInstruction ? " Ravi K Tiwari (Admin)" : item.addedBy}
                               </span>
 
                               <div className="flex items-center gap-3">

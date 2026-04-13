@@ -159,7 +159,7 @@ const AdminDashboard = () => {
         `${API_URL}/admin/add-note/${selectedLead._id}`,
         {
           note: newNote,
-          addedBy: "Admin",
+          addedBy: "Ravi K Tiwari (Admin)", // Admin ke note me apna naam add karo
         },
         { headers: { Authorization: `Bearer ${token}` } },
       );
