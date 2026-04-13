@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Mail, Lock, ArrowRight, ArrowLeft } from "lucide-react"; // ArrowLeft add kiya hai
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
-import toast, { Toaster } from "react-hot-toast";
+import toast from "react-hot-toast";
 import { API_URL } from "../config/config";
 
 const Login = () => {
@@ -59,7 +59,7 @@ const Login = () => {
 
   return (
     <div className="min-h-screen bg-[#f3f4f6] flex items-center justify-center p-4">
-      <Toaster position="top-center" />
+     
       
       <div className="max-w-md w-full bg-white rounded-[2.5rem] shadow-2xl border border-slate-100 overflow-hidden relative">
         
