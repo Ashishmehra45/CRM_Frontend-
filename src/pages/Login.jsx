@@ -14,7 +14,7 @@ const Login = () => {
   const [isForgotView, setIsForgotView] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
 
-  const handleLogin = async (e) => {
+ const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
@@ -22,6 +22,9 @@ const Login = () => {
       if (res.data.success) {
         localStorage.setItem("token", res.data.token);
         localStorage.setItem("user", JSON.stringify(res.data.user));
+        
+        // 🔥 NAYI LINE: Naya toast dikhane se pehle purane saare hata do
+        toast.dismiss(); 
         toast.success(`Welcome ${res.data.user.fullName}! Redirecting...`);
         
         setTimeout(() => {
@@ -30,6 +33,7 @@ const Login = () => {
         }, 1500);
       }
     } catch (err) {
+      toast.dismiss(); // Error aaye toh bhi purane hata do
       toast.error(err.response?.data?.message || "Invalid Credentials!");
     } finally {
       setLoading(false);

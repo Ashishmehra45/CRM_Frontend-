@@ -153,11 +153,14 @@ const [editNoteText, setEditNoteText] = useState("");
   };
   const navigate = useNavigate(); // Navigation initialize karo
 
-  const handleLogout = () => {
+const handleLogout = () => {
     // 1. Local storage khali karo
     localStorage.removeItem("token");
     localStorage.removeItem("user");
 
+    // 🔥 NAYI LINE: Purane saare toasts clear karo
+    toast.dismiss(); 
+    
     // 2. Sunder sa notification
     toast.success("Logged out successfully see you again!");
 
@@ -637,7 +640,7 @@ const [editNoteText, setEditNoteText] = useState("");
 
   return (
     <div className="flex min-h-screen bg-gray-50 font-sans">
-      <Toaster position="top-center" />
+      {/* <Toaster position="top-center" /> */}
       {/* --- SIDEBAR --- */}
       {/* 🔥 MOBILE HEADER (Sirf choti screen par dikhega) */}
       <div className="md:hidden fixed top-0 w-full bg-slate-900 text-white z-[60] flex justify-between items-center px-6 py-4 shadow-md">

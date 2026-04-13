@@ -233,7 +233,7 @@ const AdminDashboard = () => {
 
   return (
     <div className="flex min-h-screen bg-[#F8FAFC] font-sans text-slate-900 relative">
-      <Toaster position="top-right" />
+       {/* <Toaster position="top-right" /> */}
 
       {/* --- SIDEBAR --- */}
       <aside className="w-80 bg-[#0F172A] text-slate-300 flex flex-col fixed left-0 top-0 h-screen shadow-2xl z-50">
