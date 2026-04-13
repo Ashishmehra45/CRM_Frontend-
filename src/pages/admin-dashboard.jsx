@@ -24,6 +24,7 @@ import {
   Mail,
   MapPin,
   ArrowLeft,
+  Bell, // 🔥 Ensure Bell is imported
 } from "lucide-react";
 import { API_URL } from "../config/config";
 import toast, { Toaster } from "react-hot-toast";
@@ -34,7 +35,6 @@ const AdminDashboard = () => {
   const [fetchingLeads, setFetchingLeads] = useState(false);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  
 
   // Tabs: 'overview', 'team', 'leads', 'view-lead'
   const [activeTab, setActiveTab] = useState("overview");
@@ -46,6 +46,58 @@ const AdminDashboard = () => {
   const [selectedLeadForView, setSelectedLeadForView] = useState({}); // For Full Page View
   const [newNote, setNewNote] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All");
+
+  // ==========================================
+  // 🔥 ADDED: NOTIFICATIONS STATES & LOGIC
+  // ==========================================
+ // ==========================================
+  // 🔥 ADDED: NOTIFICATIONS STATES & LOGIC
+  // ==========================================
+  const [notifications, setNotifications] = useState([]);
+  const [isNotifDrawerOpen, setIsNotifDrawerOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0); // Naya state unread count ke liye
+
+  const fetchNotifications = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/admin/notifications`);
+      if (res.data.success) {
+        const fetchedNotifs = res.data.data;
+        setNotifications(fetchedNotifs);
+
+        // Naya logic: Check karo aakhri baar kab drawer khola tha
+        const lastSeenTime = localStorage.getItem("adminLastSeenNotif");
+        if (lastSeenTime) {
+          // Sirf wo notifications gino jo last seen time ke baad aayi hain
+          const newUnread = fetchedNotifs.filter(
+            (n) => new Date(n.createdAt) > new Date(lastSeenTime)
+          );
+          setUnreadCount(newUnread.length);
+        } else {
+          setUnreadCount(fetchedNotifs.length); // Pehli baar saari new dikhengi
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching notifications:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 30000); 
+    return () => clearInterval(interval);
+  }, []);
+
+  // Drawer kholne par unread count 0 kar do aur current time save kar do
+  const openNotificationDrawer = () => {
+    setIsNotifDrawerOpen(true);
+    setUnreadCount(0); // Laal badge turant hata do
+    if (notifications.length > 0) {
+      // Sabse latest notification ka time save kar lo
+      localStorage.setItem("adminLastSeenNotif", notifications[0].createdAt); 
+    }
+  };
+  // ==========================================
+  // ==========================================
 
   const fetchStats = async () => {
     setLoading(true);
@@ -63,8 +115,6 @@ const AdminDashboard = () => {
       setLoading(false);
     }
   };
-
-  
 
   const fetchAllLeads = async () => {
     setFetchingLeads(true);
@@ -89,10 +139,8 @@ const AdminDashboard = () => {
   }, []);
 
   useEffect(() => {
-    if (activeTab === "leads") {
-      fetchAllLeads();
-    }
-  }, [activeTab]);
+    fetchAllLeads(); // Ab kisi bhi tab se timeline khul jayegi
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -191,8 +239,11 @@ const AdminDashboard = () => {
       <aside className="w-80 bg-[#0F172A] text-slate-300 flex flex-col fixed left-0 top-0 h-screen shadow-2xl z-50">
         <div className="p-10">
           <div className="flex items-center gap-3 mb-1">
-            <img  className="w-16 h-16 mt-[-30px]" src={imglogo} alt="IMGLOBAL Logo" />
-           
+            <img
+              className="w-16 h-16 mt-[-30px]"
+              src={imglogo}
+              alt="IMGLOBAL Logo"
+            />
           </div>
           <p className="text-[10px] text-slate-500 uppercase font-black tracking-[0.3em] ml-1">
             Admin Panel
@@ -221,6 +272,36 @@ const AdminDashboard = () => {
           >
             <Briefcase size={18} /> Leads Pipeline
           </button>
+
+        
+         {/* 🔥 ADDED: NOTIFICATIONS BUTTON IN SIDEBAR */}
+          <div className="pt-4 mt-4 border-t border-white/5">
+            <button
+              onClick={openNotificationDrawer} // 🔥 Purane function ki jagah naya function call kiya
+              className="w-full flex items-center justify-between px-5 py-4 rounded-2xl transition-all font-bold text-sm hover:bg-white/5 text-slate-300"
+            >
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  {/* 🔥 Agar unreadCount 0 se zyada hai tabhi pulse aur red dot dikhega */}
+                  <Bell size={18} className={unreadCount > 0 ? "text-blue-400 animate-pulse" : "text-slate-400"} />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+                    </span>
+                  )}
+                </div>
+                Activity Logs
+              </div>
+              {/* 🔥 Badge mein ab total length nahi, sirf unreadCount dikhega */}
+              {unreadCount > 0 && (
+                <span className="bg-red-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-lg shadow-red-500/30">
+                  {unreadCount} NEW
+                </span>
+              )}
+            </button>
+          </div>
+          {/* ========================================= */}
         </nav>
 
         <div className="p-8 border-t border-white/5">
@@ -242,7 +323,7 @@ const AdminDashboard = () => {
         {/* =========================================
             TAB 1 & 2: OVERVIEW & TEAM 
             ========================================= */}
-      {(activeTab === "overview" || activeTab === "team") && (
+        {(activeTab === "overview" || activeTab === "team") && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
             {/* --- HEADER --- */}
             <div className="flex justify-between items-center mb-12">
@@ -271,7 +352,6 @@ const AdminDashboard = () => {
 
             {/* --- STATS CARDS SECTION (ALL WHITE & PREMIUM) --- */}
             <div className="flex flex-col gap-6 mb-12">
-              
               {/* TOP ROW: Main Stats */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div
@@ -322,7 +402,10 @@ const AdminDashboard = () => {
                         FDI Leads
                       </p>
                       <h3 className="text-3xl font-black text-slate-800 tracking-tighter">
-                        {data.workerBreakdown?.reduce((sum, w) => sum + (w.fdi || 0), 0) || 0}
+                        {data.workerBreakdown?.reduce(
+                          (sum, w) => sum + (w.fdi || 0),
+                          0,
+                        ) || 0}
                       </h3>
                     </div>
                   </div>
@@ -337,7 +420,10 @@ const AdminDashboard = () => {
                         CIP Leads
                       </p>
                       <h3 className="text-3xl font-black text-slate-800 tracking-tighter">
-                        {data.workerBreakdown?.reduce((sum, w) => sum + (w.cip || 0), 0) || 0}
+                        {data.workerBreakdown?.reduce(
+                          (sum, w) => sum + (w.cip || 0),
+                          0,
+                        ) || 0}
                       </h3>
                     </div>
                   </div>
@@ -352,7 +438,10 @@ const AdminDashboard = () => {
                         Nat. PMU
                       </p>
                       <h3 className="text-3xl font-black text-slate-800 tracking-tighter">
-                        {data.workerBreakdown?.reduce((sum, w) => sum + (w.pmu || 0), 0) || 0}
+                        {data.workerBreakdown?.reduce(
+                          (sum, w) => sum + (w.pmu || 0),
+                          0,
+                        ) || 0}
                       </h3>
                     </div>
                   </div>
@@ -367,7 +456,10 @@ const AdminDashboard = () => {
                         Representation
                       </p>
                       <h3 className="text-3xl font-black text-slate-800 tracking-tighter">
-                        {data.workerBreakdown?.reduce((sum, w) => sum + (w.representation || 0), 0) || 0}
+                        {data.workerBreakdown?.reduce(
+                          (sum, w) => sum + (w.representation || 0),
+                          0,
+                        ) || 0}
                       </h3>
                     </div>
                   </div>
@@ -465,134 +557,149 @@ const AdminDashboard = () => {
         {/* =========================================
             TAB 3: LEADS PIPELINE TABLE
             ========================================= */}
-       {activeTab === "leads" && (
-  <div className="animate-in fade-in slide-in-from-right-4 duration-500">
-    {/* --- HEADER & FILTERS --- */}
-    <div className="flex justify-between items-end mb-10">
-      <div>
-        <h1 className="text-4xl font-black text-slate-900 tracking-tight leading-none mb-3">
-          Lead <span className="text-blue-600">Surveillance</span>
-        </h1>
-        <p className="text-slate-500 font-medium italic">
-          Track every move made by workers on leads.
-        </p>
-      </div>
+        {activeTab === "leads" && (
+          <div className="animate-in fade-in slide-in-from-right-4 duration-500">
+            {/* --- HEADER & FILTERS --- */}
+            <div className="flex justify-between items-end mb-10">
+              <div>
+                <h1 className="text-4xl font-black text-slate-900 tracking-tight leading-none mb-3">
+                  Lead <span className="text-blue-600">Surveillance</span>
+                </h1>
+                <p className="text-slate-500 font-medium italic">
+                  Track every move made by workers on leads.
+                </p>
+              </div>
 
-      <div className="flex items-center gap-4">
-        {/* 🔥 Category Filter Dropdown */}
-        <select
-          value={categoryFilter}
-          onChange={(e) => setCategoryFilter(e.target.value)}
-          className="bg-white px-5 py-4 rounded-2xl border border-slate-200 outline-none font-bold text-sm text-slate-600 shadow-sm cursor-pointer"
-        >
-          <option value="All">All Categories</option>
-          <option value="FDI">FDI Leads</option>
-          <option value="CIP">CIP Leads</option>
-          <option value="NATIONAL PMU">National PMU</option>
-          <option value="REPRESENTATION">Representation</option>
-        </select>
-
-        {/* Search Bar */}
-        <div className="relative w-80">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-          <input
-            type="text"
-            placeholder="Search Company or Name..."
-            className="w-full bg-white pl-12 pr-6 py-4 rounded-2xl border border-slate-200 outline-none font-bold shadow-sm"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-      </div>
-    </div>
-
-    {/* --- TABLE --- */}
-    <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-2xl shadow-slate-200/50 overflow-hidden">
-      <table className="w-full text-left">
-        <thead>
-          <tr className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] bg-slate-50/50 border-b border-slate-100">
-            <th className="px-10 py-6">Lead Entity</th>
-            <th className="px-6 py-6">Contact Person</th>
-            <th className="px-6 py-6 text-center">Category</th>
-            <th className="px-6 py-6">Handler (Worker)</th>
-            <th className="px-6 py-6 text-right">Access Timeline</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-50">
-          {fetchingLeads ? (
-            <tr><td colSpan="5" className="p-20 text-center text-blue-600 font-bold italic">Fetching Database...</td></tr>
-          ) : (
-            // 🔥 ISMATCHING LOGIC START
-            (leadsData || []).map((lead, idx) => {
-              const matchesSearch = 
-                (lead.companyName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-                (`${lead.firstName} ${lead.lastName}`).toLowerCase().includes(searchTerm.toLowerCase());
-
-              const matchesCategory = 
-                categoryFilter === "All" || 
-                (lead.category || "").toUpperCase() === categoryFilter.toUpperCase();
-
-              // Agar dono match nahi kar rahe toh return null (kuch mat dikhao)
-              if (!matchesSearch || !matchesCategory) return null;
-
-              return (
-                <tr
-                  key={idx}
-                  onClick={() => {
-                    setSelectedLeadForView(lead);
-                    setActiveTab("view-lead");
-                  }}
-                  className="hover:bg-blue-50/30 cursor-pointer transition-all group"
+              <div className="flex items-center gap-4">
+                {/* 🔥 Category Filter Dropdown */}
+                <select
+                  value={categoryFilter}
+                  onChange={(e) => setCategoryFilter(e.target.value)}
+                  className="bg-white px-5 py-4 rounded-2xl border border-slate-200 outline-none font-bold text-sm text-slate-600 shadow-sm cursor-pointer"
                 >
-                  <td className="px-10 py-6">
-                    <p className="font-black text-slate-800 text-lg uppercase leading-none mb-1">
-                      {lead.companyName || "N/A"}
-                    </p>
-                    <p className="text-[10px] text-blue-600 font-bold uppercase tracking-widest">
-                      {lead.country || "N/A"}
-                    </p>
-                  </td>
-                  <td className="px-6 py-6">
-                    <span className="font-bold text-slate-700">
-                      {lead.firstName} {lead.lastName}
-                    </span>
-                  </td>
-                  <td className="px-6 py-6 text-center">
-                    <span className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-black uppercase tracking-widest">
-                      {lead.category || "N/A"}
-                    </span>
-                  </td>
-                  <td className="px-6 py-6">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center text-[10px] font-black uppercase">
-                        {lead.workerName?.charAt(0) || "W"}
-                      </div>
-                      <span className="font-bold text-slate-700 text-sm uppercase">
-                        {lead.workerName || "Unknown"}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-10 py-6 text-right">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedLead(lead);
-                        setIsTimelineOpen(true);
-                      }}
-                      className="px-5 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-blue-600 transition-all shadow-md active:scale-95 font-bold text-xs flex items-center gap-2 ml-auto"
-                    >
-                      <Clock size={14} /> Timeline
-                    </button>
-                  </td>
-                </tr>
-              );
-            })
-          )}
-        </tbody>
-      </table>
-    </div>
-  </div>
-)}
+                  <option value="All">All Categories</option>
+                  <option value="FDI">FDI Leads</option>
+                  <option value="CIP">CIP Leads</option>
+                  <option value="NATIONAL PMU">National PMU</option>
+                  <option value="REPRESENTATION">Representation</option>
+                </select>
+
+                {/* Search Bar */}
+                <div className="relative w-80">
+                  <Search
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+                    size={18}
+                  />
+                  <input
+                    type="text"
+                    placeholder="Search Company or Name..."
+                    className="w-full bg-white pl-12 pr-6 py-4 rounded-2xl border border-slate-200 outline-none font-bold shadow-sm"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* --- TABLE --- */}
+            <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-2xl shadow-slate-200/50 overflow-hidden">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] bg-slate-50/50 border-b border-slate-100">
+                    <th className="px-10 py-6">Lead Entity</th>
+                    <th className="px-6 py-6">Contact Person</th>
+                    <th className="px-6 py-6 text-center">Category</th>
+                    <th className="px-6 py-6">Handler (Worker)</th>
+                    <th className="px-6 py-6 text-right">Access Timeline</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {fetchingLeads ? (
+                    <tr>
+                      <td
+                        colSpan="5"
+                        className="p-20 text-center text-blue-600 font-bold italic"
+                      >
+                        Fetching Database...
+                      </td>
+                    </tr>
+                  ) : (
+                    // 🔥 ISMATCHING LOGIC START
+                    (leadsData || []).map((lead, idx) => {
+                      const matchesSearch =
+                        (lead.companyName || "")
+                          .toLowerCase()
+                          .includes(searchTerm.toLowerCase()) ||
+                        `${lead.firstName} ${lead.lastName}`
+                          .toLowerCase()
+                          .includes(searchTerm.toLowerCase());
+
+                      const matchesCategory =
+                        categoryFilter === "All" ||
+                        (lead.category || "").toUpperCase() ===
+                          categoryFilter.toUpperCase();
+
+                      // Agar dono match nahi kar rahe toh return null (kuch mat dikhao)
+                      if (!matchesSearch || !matchesCategory) return null;
+
+                      return (
+                        <tr
+                          key={idx}
+                          onClick={() => {
+                            setSelectedLeadForView(lead);
+                            setActiveTab("view-lead");
+                          }}
+                          className="hover:bg-blue-50/30 cursor-pointer transition-all group"
+                        >
+                          <td className="px-10 py-6">
+                            <p className="font-black text-slate-800 text-lg uppercase leading-none mb-1">
+                              {lead.companyName || "N/A"}
+                            </p>
+                            <p className="text-[10px] text-blue-600 font-bold uppercase tracking-widest">
+                              {lead.country || "N/A"}
+                            </p>
+                          </td>
+                          <td className="px-6 py-6">
+                            <span className="font-bold text-slate-700">
+                              {lead.firstName} {lead.lastName}
+                            </span>
+                          </td>
+                          <td className="px-6 py-6 text-center">
+                            <span className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-black uppercase tracking-widest">
+                              {lead.category || "N/A"}
+                            </span>
+                          </td>
+                          <td className="px-6 py-6">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center text-[10px] font-black uppercase">
+                                {lead.workerName?.charAt(0) || "W"}
+                              </div>
+                              <span className="font-bold text-slate-700 text-sm uppercase">
+                                {lead.workerName || "Unknown"}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-10 py-6 text-right">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedLead(lead);
+                                setIsTimelineOpen(true);
+                              }}
+                              className="px-5 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-blue-600 transition-all shadow-md active:scale-95 font-bold text-xs flex items-center gap-2 ml-auto"
+                            >
+                              <Clock size={14} /> Timeline
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
         {/* =========================================
             🔥 TAB 4: VIEW FULL LEAD DETAILS (READ ONLY)
@@ -918,6 +1025,142 @@ const AdminDashboard = () => {
                   <Send size={16} />
                 </button>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================
+          🔥 ADDED: NOTIFICATIONS SLIDE-OVER DRAWER
+          ================================================== */}
+     {isNotifDrawerOpen && (
+        <div className="fixed inset-0 z-[100] flex justify-end bg-slate-900/40 backdrop-blur-sm transition-all">
+          <div className="w-full max-w-md bg-white h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+            {/* Header */}
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <div>
+                <h2 className="text-xl font-extrabold text-slate-800 flex items-center gap-2">
+                  <Bell size={20} className="text-blue-600" /> Activity Feed
+                </h2>
+                <p className="text-sm font-medium text-slate-500 mt-1">
+                  Real-time logs of worker actions
+                </p>
+              </div>
+              <button
+                onClick={() => setIsNotifDrawerOpen(false)}
+                className="p-2 bg-white hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-full transition-colors shadow-sm border border-slate-200"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Notification List (Scrollable) */}
+            <div className="flex-1 overflow-y-auto p-6 bg-slate-50/30 custom-scrollbar">
+              {notifications.length === 0 ? (
+                <div className="text-center py-20">
+                  <Activity size={40} className="mx-auto text-slate-300 mb-4" />
+                  <p className="text-slate-500 font-semibold">All caught up!</p>
+                  <p className="text-xs text-slate-400 mt-1">
+                    No recent activities found.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {notifications.map((notif, idx) => (
+                    <div
+                      key={idx}
+                      // 🔥 ADDED: Sirf tabhi click chalega jab type "note" hoga
+                     // 🔥 ADDED: Sirf tabhi click chalega jab type "note" hoga
+                      onClick={async () => {
+                        if (notif.type !== "note") return; // Agar note nahi hai toh kuch mat karo
+
+                        // 1. Loading ya Spinner dikhane ke liye (optional, par acha hai)
+                        toast.loading("Fetching updated timeline...", { id: "notif-load" });
+
+                        try {
+                          const token = localStorage.getItem("token");
+                          // 2. Sirf ek us specific lead ka FRESH data backend se mangwao
+                          // (Note: Backend me ye naya route shayad na ho, isliye hum saari leads dobara le aate hain for safety)
+                          const res = await axios.get(`${API_URL}/admin/get-all-leads`, {
+                            headers: { Authorization: `Bearer ${token}` },
+                          });
+
+                          if (res.data.success) {
+                            const freshLeadsData = res.data.data;
+                            setLeadsData(freshLeadsData); // Table bhi update kardo haatho-haath
+
+                            // 3. Ab FRESH data me se lead match karo
+                            const matchedLead = freshLeadsData.find(
+                              (l) =>
+                                l.companyName?.trim().toLowerCase() ===
+                                notif.leadName?.trim().toLowerCase(),
+                            );
+
+                            toast.dismiss("notif-load"); // Loader hatao
+
+                            if (matchedLead) {
+                              setIsNotifDrawerOpen(false);
+                              setSelectedLead(matchedLead); // Ye ab updated notes ke sath aayega!
+                              setIsTimelineOpen(true);
+                            } else {
+                              toast.error("Lead database mein nahi mili. Shayad delete ho chuki hai!");
+                            }
+                          }
+                        } catch (err) {
+                          toast.dismiss("notif-load");
+                          toast.error("Failed to load updated lead data.");
+                        }
+                      }}
+                      // 🔥 ADDED: Hover effects aur pointer sirf "note" type wale par aayega
+                      className={`p-4 bg-white border border-slate-100 rounded-2xl shadow-sm transition-all group relative overflow-hidden ${
+                        notif.type === "note" 
+                          ? "hover:shadow-md hover:ring-2 hover:ring-blue-400/30 cursor-pointer" 
+                          : "cursor-default"
+                      }`}
+                    >
+                      {/* Left Color Bar indicator based on type */}
+                      <div
+                        className={`absolute left-0 top-0 bottom-0 w-1 ${notif.type === "delete" ? "bg-red-500" : notif.type === "update" ? "bg-orange-400" : "bg-blue-500"}`}
+                      ></div>
+
+                    <div className="flex justify-between items-start">
+                        {/* 🔥 CHANGED: <br/> hata diya aur flex laga diya taaki side-by-side aayein */}
+                        <div className="text-sm text-slate-700 leading-snug ml-2 flex items-center flex-wrap gap-y-1">
+                          <span className={`font-black uppercase text-[10px] px-2 py-0.5 rounded-md mr-2 ${notif.type === 'delete' ? 'bg-red-50 text-red-600' : notif.type === 'add' ? 'bg-green-50 text-green-600' : 'bg-blue-50 text-blue-600'}`}>
+                            {notif.performedBy}
+                          </span>
+                          
+                          <span>
+                            {notif.message}{" "}
+                            {notif.leadName !== "System" && (
+                              <span className="font-bold text-slate-900">
+                                "{notif.leadName}"
+                              </span>
+                            )}
+                          </span>
+                        </div>
+
+                        {/* 🔥 Small arrow sirf "note" type pe dikhega */}
+                        {notif.type === "note" && (
+                          <div className="opacity-0 group-hover:opacity-100 transition-opacity ml-3 shrink-0">
+                            <ArrowLeft
+                              size={14}
+                              className="text-blue-400 rotate-180 mt-0.5"
+                            />
+                          </div>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-slate-400 font-bold mt-2 ml-2 uppercase tracking-widest flex items-center gap-1">
+                        <Clock size={10} />{" "}
+                        {new Date(notif.createdAt).toLocaleString("en-IN", {
+                          dateStyle: "medium",
+                          timeStyle: "short",
+                        })}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
