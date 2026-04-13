@@ -4,7 +4,8 @@ import toast, { Toaster } from "react-hot-toast";
 import { useNavigate } from "react-router-dom"; // Ye zaroori hai
 import imglogo from "../assets/im global.png"; // Logo ke liye image import karo
 import {
-  Edit2, Trash2,
+  Edit2,
+  Trash2,
   Search,
   Bell,
   Menu,
@@ -37,6 +38,9 @@ import {
   Activity,
 } from "lucide-react";
 import { API_URL } from "../config/config"; // Apne config file se URL import karo
+import { ArrowLeft } from 'lucide-react'; 
+
+
 
 const FDIDashboard = () => {
   const [isEditMode, setIsEditMode] = useState(false);
@@ -57,11 +61,27 @@ const FDIDashboard = () => {
   const [newNote, setNewNote] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   // 2. Component ke andar apni existing Timeline states ke niche ye daal de
-const [noteLoading, setNoteLoading] = useState(false); // Double submit rokne ke liye
-const [editingNoteId, setEditingNoteId] = useState(null); // Edit mode track karne ke liye
-const [editNoteText, setEditNoteText] = useState("");
+  const [noteLoading, setNoteLoading] = useState(false); // Double submit rokne ke liye
+  const [editingNoteId, setEditingNoteId] = useState(null); // Edit mode track karne ke liye
+  const [editNoteText, setEditNoteText] = useState("");
 
-  const handleUpdateLead = async (e) => {
+  const renderBackButton = () => (
+    <button
+      type="button" 
+      onClick={(e) => {
+        e.preventDefault(); 
+        setActiveTab("dashboard"); // 🔥 Tere code me default tab "dashboard" hai, "overview" nahi!
+      }} 
+      className="mb-6 flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-blue-600 transition-colors group cursor-pointer focus:outline-none"
+    >
+      <span className="p-1.5 rounded-full bg-slate-100 group-hover:bg-blue-50 transition-colors">
+        <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+      </span>
+      Back to Dashboard
+    </button>
+  );
+
+ const handleUpdateLead = async (e) => {
     e.preventDefault();
 
     // 1. Pehle check karo ki ID hai bhi ya nahi
@@ -70,16 +90,29 @@ const [editNoteText, setEditNoteText] = useState("");
       return toast.error("Lead ID nahi mili, page refresh karke try karo.");
     }
 
+    // 🔥 NEW LOGIC: Check karo ki data change hua bhi hai ya nahi?
+    const isUnchanged = JSON.stringify(formData) === JSON.stringify(selectedLeadForEdit);
+    
+    if (isUnchanged) {
+      // Agar kuch change nahi hua, toh API call mat karo aur wapas table pe bhej do (ya wahi rehne do)
+      return toast("No update required. ", {
+        icon: 'ℹ️', // Information icon
+        style: {
+          background: '#f8fafc',
+          color: '#334155',
+          border: '1px solid #cbd5e1'
+        }
+      });
+    }
+
     setLoading(true);
 
     // 2. Exact URL jo hit ho rahi hai usko pehle hi check karlo
     const targetUrl = `${API_URL}/workers/update-lead/${formData._id}`;
-    console.log("🚀 Attempting Update at:", targetUrl);
-    console.log("📦 Data being sent:", formData);
 
     try {
       const token = localStorage.getItem("token");
-      if (!token) throw new Error("Token missing! Login karo.");
+      if (!token) throw new Error("Token missing! ");
 
       const res = await axios.put(targetUrl, formData, {
         headers: { Authorization: `Bearer ${token}` },
@@ -89,35 +122,19 @@ const [editNoteText, setEditNoteText] = useState("");
         toast.success("Details updated successfully!");
         setIsEditMode(false);
         setFormData({}); // Form clear karo
+        setSelectedLeadForEdit(null); // 🔥 State ko wapas khali kar do
         fetchLeads(activeTab); // Table refresh
+       setActiveTab("dashboard"); 
+        fetchLeads("dashboard"); //
       }
     } catch (err) {
       // 3. Detailed Error Logging
-      console.error("❌ API Error Details:");
-      if (err.response) {
-        // Server ne response diya (404, 500, etc.)
-        console.error("Status:", err.response.status);
-        console.error("Data:", err.response.data);
-
-        if (err.response.status === 404) {
-          toast.error("Endpoint nahi mila (404). Backend routes check karo!");
-        } else {
-          toast.error(err.response.data.message || "Update failed!");
-        }
-      } else if (err.request) {
-        // Request bheji par response nahi aaya
-        console.error("No response from server. Network issue?");
-        toast.error("Server se connection nahi ho pa raha!");
-      } else {
-        console.error("Error Message:", err.message);
-      }
+      console.error("❌ API Error Details:", err);
+      toast.error(err.response?.data?.message || "Update failed!");
     } finally {
       setLoading(false);
     }
   };
-
-  
-  
 
   // API Call: Add Timeline Note
   const handleAddNote = async (e) => {
@@ -153,14 +170,14 @@ const [editNoteText, setEditNoteText] = useState("");
   };
   const navigate = useNavigate(); // Navigation initialize karo
 
-const handleLogout = () => {
+  const handleLogout = () => {
     // 1. Local storage khali karo
     localStorage.removeItem("token");
     localStorage.removeItem("user");
 
     // 🔥 NAYI LINE: Purane saare toasts clear karo
-    toast.dismiss(); 
-    
+    toast.dismiss();
+
     // 2. Sunder sa notification
     toast.success("Logged out successfully see you again!");
 
@@ -181,7 +198,7 @@ const handleLogout = () => {
       const res = await axios.post(
         `${API_URL}/workers/add-note/${selectedLead._id}`,
         { note: newNote },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
 
       if (res.data.success) {
@@ -201,52 +218,63 @@ const handleLogout = () => {
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-     handleaddNote();
+      handleaddNote();
     }
   };
 
   // 🔥 NEW: Delete Note Function
- // 🔥 NEW: Delete Note Function with Custom Toast Alert
+  // 🔥 NEW: Delete Note Function with Custom Toast Alert
   const handleDeleteNote = (noteId) => {
-    toast((t) => (
-      <div className="flex flex-col gap-3">
-        <p className="font-semibold text-slate-800">Delete this note?</p>
-       
-        <div className="flex justify-end gap-2 mt-2">
-          <button 
-            onClick={() => toast.dismiss(t.id)} 
-            className="px-3 py-1.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-md transition-colors"
-          >
-            Cancel
-          </button>
-          <button 
-            onClick={async () => {
-              toast.dismiss(t.id); // Pehle toast hatao
-              try {
-                const token = localStorage.getItem("token");
-                const res = await axios.delete(`${API_URL}/workers/delete-note/${selectedLead._id}/${noteId}`, {
-                  headers: { Authorization: `Bearer ${token}` }
-                });
-                
-                if (res.data.success) {
-                  toast.success("Note deleted successfully!");
-                  setSelectedLead((prev) => ({ ...prev, timeline: res.data.timeline }));
-                  fetchLeads(activeTab);
+    toast(
+      (t) => (
+        <div className="flex flex-col gap-3">
+          <p className="font-semibold text-slate-800">Delete this note?</p>
+
+          <div className="flex justify-end gap-2 mt-2">
+            <button
+              onClick={() => toast.dismiss(t.id)}
+              className="px-3 py-1.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-md transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={async () => {
+                toast.dismiss(t.id); // Pehle toast hatao
+                try {
+                  const token = localStorage.getItem("token");
+                  const res = await axios.delete(
+                    `${API_URL}/workers/delete-note/${selectedLead._id}/${noteId}`,
+                    {
+                      headers: { Authorization: `Bearer ${token}` },
+                    },
+                  );
+
+                  if (res.data.success) {
+                    toast.success("Note deleted successfully!");
+                    setSelectedLead((prev) => ({
+                      ...prev,
+                      timeline: res.data.timeline,
+                    }));
+                    fetchLeads(activeTab);
+                  }
+                } catch (err) {
+                  toast.error(
+                    err.response?.data?.message || "Failed to delete note!",
+                  );
                 }
-              } catch (err) {
-                toast.error(err.response?.data?.message || "Failed to delete note!");
-              }
-            }} 
-            className="px-3 py-1.5 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors"
-          >
-            Delete
-          </button>
+              }}
+              className="px-3 py-1.5 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors"
+            >
+              Delete
+            </button>
+          </div>
         </div>
-      </div>
-    ), {
-      duration: Infinity, // Jab tak user action na le, ye toast gayab nahi hoga
-      position: "top-center",
-    });
+      ),
+      {
+        duration: Infinity, // Jab tak user action na le, ye toast gayab nahi hoga
+        position: "top-center",
+      },
+    );
   };
 
   // 🔥 NEW: Edit Note Function
@@ -258,7 +286,7 @@ const handleLogout = () => {
       const res = await axios.put(
         `${API_URL}/workers/edit-note/${selectedLead._id}/${noteId}`,
         { note: editNoteText },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
       if (res.data.success) {
         toast.success("Note updated!");
@@ -273,58 +301,70 @@ const handleLogout = () => {
   // 🔥 NEW: Delete Lead Function with Custom Confirmation Toast
   const handleDeleteLead = (e) => {
     e.preventDefault();
-    
+
     if (!formData._id) {
       return toast.error("Lead ID not found!");
     }
 
-    toast((t) => (
-      <div className="flex flex-col gap-3">
-        <p className="font-semibold text-slate-800">Delete this entire lead?</p>
-        <p className="text-xs text-slate-500">This action cannot be undone. All timeline notes will also be deleted.</p>
-        <div className="flex justify-end gap-2 mt-2">
-          <button 
-            onClick={() => toast.dismiss(t.id)} 
-            className="px-3 py-1.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-md transition-colors"
-          >
-            Cancel
-          </button>
-          <button 
-            onClick={async () => {
-              toast.dismiss(t.id); // Pehle toast hatao
-              setLoading(true);
-              try {
-                const token = localStorage.getItem("token");
-                // Backend call (Tera backend delete route)
-                const res = await axios.delete(`${API_URL}/workers/delete-lead/${formData._id}`, {
-                  headers: { Authorization: `Bearer ${token}` }
-                });
-                
-                if (res.data.success) {
-                  toast.success("Lead deleted successfully!");
-                  setIsEditMode(false);
-                  setFormData({}); // Form clear
-                  setActiveTab("dashboard"); // Wapas table pe bhejo
-                  fetchLeads("dashboard"); // List refresh karo
-                }
-              } catch (err) {
-                toast.error(err.response?.data?.message || "Failed to delete lead!");
-              } finally {
-                setLoading(false);
-              }
-            }} 
-            className="px-3 py-1.5 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors"
-          >
-            Yes, Delete Lead
-          </button>
-        </div>
-      </div>
-    ), {
-      duration: Infinity, 
-      position: "top-center",
-    });
-  };
+    toast(
+      (t) => (
+        <div className="flex flex-col gap-3">
+          <p className="font-semibold text-slate-800">
+            Delete this entire lead?
+          </p>
+          <p className="text-xs text-slate-500">
+            This action cannot be undone. All timeline notes will also be
+            deleted.
+          </p>
+          <div className="flex justify-end gap-2 mt-2">
+            <button
+              onClick={() => toast.dismiss(t.id)}
+              className="px-3 py-1.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-md transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={async () => {
+                toast.dismiss(t.id); // Pehle toast hatao
+                setLoading(true);
+                try {
+                  const token = localStorage.getItem("token");
+                  // Backend call (Tera backend delete route)
+                  const res = await axios.delete(
+                    `${API_URL}/workers/delete-lead/${formData._id}`,
+                    {
+                      headers: { Authorization: `Bearer ${token}` },
+                    },
+                  );
 
+                  if (res.data.success) {
+                    toast.success("Lead deleted successfully!");
+                    setIsEditMode(false);
+                    setFormData({}); // Form clear
+                    setActiveTab("dashboard"); // Wapas table pe bhejo
+                    fetchLeads("dashboard"); // List refresh karo
+                  }
+                } catch (err) {
+                  toast.error(
+                    err.response?.data?.message || "Failed to delete lead!",
+                  );
+                } finally {
+                  setLoading(false);
+                }
+              }}
+              className="px-3 py-1.5 text-xs font-bold text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors"
+            >
+              Yes, Delete Lead
+            </button>
+          </div>
+        </div>
+      ),
+      {
+        duration: Infinity,
+        position: "top-center",
+      },
+    );
+  };
 
   const countries = [
     "Afghanistan",
@@ -661,6 +701,7 @@ const handleLogout = () => {
       {/* 🔥 SIDEBAR OVERLAY (Mobile ke liye jab menu khula ho) */}
       {isSidebarOpen && (
         <div
+         
           className="fixed inset-0 bg-black/60 z-[40] md:hidden backdrop-blur-sm transition-opacity"
           onClick={() => setIsSidebarOpen(false)}
         ></div>
@@ -763,8 +804,14 @@ const handleLogout = () => {
             ========================================= */}
         {isTableView && (
           <div className="animate-in fade-in duration-500">
+
+           
+
             {/* --- TOP HEADER --- */}
+            {renderBackButton()}
+
             <div className="flex justify-between items-center mb-8">
+              
               <div>
                 <h1 className="text-3xl font-bold text-slate-800 tracking-tight">
                   {pageTitle}
@@ -782,7 +829,6 @@ const handleLogout = () => {
               </button>
             </div>
 
-           
             {/* --- STATS CARDS SECTION --- */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6 mb-8">
               {/* 1. Total Leads */}
@@ -837,8 +883,7 @@ const handleLogout = () => {
                 </div>
               </div>
 
-             
-             {/* 4. 🔥 Hot Leads */}
+              {/* 4. 🔥 Hot Leads */}
               <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4 md:gap-5">
                 <div className="w-12 h-12 bg-orange-50 text-orange-500 rounded-xl flex items-center justify-center shrink-0">
                   <Flame size={24} />
@@ -849,11 +894,14 @@ const handleLogout = () => {
                   </p>
                   <h3 className="text-xl md:text-2xl font-black text-slate-800">
                     {/* 🔥 FIX: Exact match for 'Hot Leads' ensuring no typo issues */}
-                    {leadsData.filter((l) => 
-                      l.leadStatus === "Hot Leads" || 
-                      l.leadStatus === "Hot Lead" || 
-                      l.leadStatus === "Pre Qualified"
-                    ).length}
+                    {
+                      leadsData.filter(
+                        (l) =>
+                          l.leadStatus === "Hot Leads" ||
+                          l.leadStatus === "Hot Lead" ||
+                          l.leadStatus === "Pre Qualified",
+                      ).length
+                    }
                   </h3>
                 </div>
               </div>
@@ -899,8 +947,6 @@ const handleLogout = () => {
               </div>
             </div>
 
-          
-
             {/* --- TABLE SECTION --- */}
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
               <div className="overflow-x-auto">
@@ -942,6 +988,7 @@ const handleLogout = () => {
                           key={lead._id}
                           onClick={() => {
                             setFormData(lead);
+                            setSelectedLeadForEdit(lead); // 🔥 ADDED: Original data yahan save kar liya
                             setIsEditMode(true);
                             setActiveTab("add-lead");
                           }}
@@ -961,21 +1008,22 @@ const handleLogout = () => {
                               {lead.category || "None"}
                             </span>
                           </td>
-                         <td className="p-4 md:p-5">
-                            <span 
+                          <td className="p-4 md:p-5">
+                            <span
                               className={`px-3 py-1 text-[10px] uppercase font-black tracking-wider rounded-full ${
-                                lead.leadStatus === "Contacted" 
-                                  ? "bg-emerald-100 text-emerald-700" 
-                                : lead.leadStatus === "Lost Lead" 
-                                  ? "bg-red-100 text-red-700" 
-                                // 🔥 NAYE COLORS ADD KIYE HAIN:
-                                : lead.leadStatus === "Hot Leads" 
-                                  ? "bg-orange-100 text-orange-700" 
-                                : lead.leadStatus === "Acquired" 
-                                  ? "bg-purple-100 text-purple-700" 
-                                : lead.leadStatus === "Junk Lead" || lead.leadStatus === "Not Qualified"
-                                  ? "bg-slate-200 text-slate-600"
-                                : "bg-amber-100 text-amber-700" // Default for Attempted, Pre Qualified, etc.
+                                lead.leadStatus === "Contacted"
+                                  ? "bg-emerald-100 text-emerald-700"
+                                  : lead.leadStatus === "Lost Lead"
+                                    ? "bg-red-100 text-red-700"
+                                    : // 🔥 NAYE COLORS ADD KIYE HAIN:
+                                      lead.leadStatus === "Hot Leads"
+                                      ? "bg-orange-100 text-orange-700"
+                                      : lead.leadStatus === "Acquired"
+                                        ? "bg-purple-100 text-purple-700"
+                                        : lead.leadStatus === "Junk Lead" ||
+                                            lead.leadStatus === "Not Qualified"
+                                          ? "bg-slate-200 text-slate-600"
+                                          : "bg-amber-100 text-amber-700" // Default for Attempted, Pre Qualified, etc.
                               }`}
                             >
                               {lead.leadStatus || "New"}
@@ -1008,6 +1056,7 @@ const handleLogout = () => {
             ========================================= */}
         {activeTab === "add-lead" && (
           <div className="animate-in fade-in duration-500">
+            {renderBackButton()}
             {/* --- TOP HEADER --- */}
             <div className="flex justify-between items-center mb-8">
               <div>
@@ -1521,7 +1570,7 @@ const handleLogout = () => {
                   <div className="flex items-center gap-3 mb-6 border-b border-slate-200 pb-3">
                     <div className="w-1.5 h-5 bg-slate-400 rounded-full"></div>
                     <h3 className="text-sm font-bold text-slate-800 uppercase tracking-widest">
-                      Description Information
+                      Description
                     </h3>
                   </div>
                   <textarea
@@ -1548,51 +1597,48 @@ const handleLogout = () => {
                     Cancel
                   </button>
 
-                  {/* --- DYNAMIC BUTTON (SAVE OR UPDATE) --- */}
-                 {/* --- DYNAMIC BUTTON (SAVE OR UPDATE/DELETE) --- */}
-                {isEditMode ? (
-                  <div className="flex gap-4">
-                    {/* 🔥 NEW: Delete Button */}
-                    <button
-                      type="button"
-                      onClick={handleDeleteLead}
-                      disabled={loading}
-                      className="px-8 py-2.5 bg-red-600 text-white rounded-lg text-sm font-semibold hover:bg-red-700 transition-all shadow-md shadow-red-200 active:scale-95 disabled:opacity-70"
-                    >
-                      Delete Lead
-                    </button>
+                  {/* --- DYNAMIC BUTTON (SAVE OR UPDATE/DELETE) --- */}
+                  {isEditMode ? (
+                    <div className="flex gap-4">
+                      {/* 🔥 NEW: Delete Button */}
+                      <button
+                        type="button"
+                        onClick={handleDeleteLead}
+                        disabled={loading}
+                        className="px-8 py-2.5 bg-red-600 text-white rounded-lg text-sm font-semibold hover:bg-red-700 transition-all shadow-md shadow-red-200 active:scale-95 disabled:opacity-70"
+                      >
+                        Delete Lead
+                      </button>
 
-                    {/* Purana Update Button */}
+                      {/* Purana Update Button */}
+                      <button
+                        type="button"
+                        onClick={handleUpdateLead}
+                        disabled={loading}
+                        className="px-8 py-2.5 bg-orange-600 text-white rounded-lg text-sm font-semibold hover:bg-orange-700 transition-all shadow-md shadow-orange-200 active:scale-95 disabled:opacity-70"
+                      >
+                        {loading ? "Updating..." : "Update Changes"}
+                      </button>
+                    </div>
+                  ) : (
                     <button
                       type="button"
-                      onClick={handleUpdateLead}
+                      onClick={handleSaveLead}
                       disabled={loading}
-                      className="px-8 py-2.5 bg-orange-600 text-white rounded-lg text-sm font-semibold hover:bg-orange-700 transition-all shadow-md shadow-orange-200 active:scale-95 disabled:opacity-70"
+                      className="px-8 py-2.5 bg-[#0f62fe] text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-all shadow-md shadow-blue-200 active:scale-95 disabled:opacity-70"
                     >
-                      {loading ? "Updating..." : "Update Changes"}
+                      {loading ? "Saving..." : "Save Lead"}
                     </button>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleSaveLead}
-                    disabled={loading}
-                    className="px-8 py-2.5 bg-[#0f62fe] text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-all shadow-md shadow-blue-200 active:scale-95 disabled:opacity-70"
-                  >
-                    {loading ? "Saving..." : "Save Lead"}
-                  </button>
-                )}
+                  )}
                 </div>
-
               </form>
             </div>
           </div>
         )}
 
-       {isTimelineOpen && selectedLead && (
+        {isTimelineOpen && selectedLead && (
           <div className="fixed inset-0 z-[100] flex justify-end bg-slate-900/20 backdrop-blur-[1px] transition-all">
             <div className="w-full max-w-md bg-white h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
-              
               {/* Header */}
               <div className="p-6 border-b border-slate-100 flex justify-between items-start bg-slate-50/50">
                 <div>
@@ -1600,7 +1646,8 @@ const handleLogout = () => {
                     {selectedLead.companyName}
                   </h2>
                   <p className="text-sm font-medium text-slate-500 mt-1 flex items-center gap-2">
-                    <User size={14} /> {selectedLead.firstName} {selectedLead.lastName}
+                    <User size={14} /> {selectedLead.firstName}{" "}
+                    {selectedLead.lastName}
                   </p>
                 </div>
                 <button
@@ -1617,54 +1664,82 @@ const handleLogout = () => {
                   <Clock size={14} /> Activity History
                 </h3>
 
-                {!selectedLead.timeline || selectedLead.timeline.length === 0 ? (
+                {!selectedLead.timeline ||
+                selectedLead.timeline.length === 0 ? (
                   <div className="text-center py-10">
-                    <MessageSquare size={32} className="mx-auto text-slate-300 mb-3" />
-                    <p className="text-sm text-slate-500">No activity recorded yet.</p>
+                    <MessageSquare
+                      size={32}
+                      className="mx-auto text-slate-300 mb-3"
+                    />
+                    <p className="text-sm text-slate-500">
+                      No activity recorded yet.
+                    </p>
                   </div>
                 ) : (
                   <div className="relative border-l-2 border-slate-200 ml-3 space-y-8">
                     {selectedLead.timeline.map((item, index) => {
-                      const isAdminInstruction = item.type === "admin_instruction" || item.addedBy?.toLowerCase().includes("admin");
-                      
+                      const isAdminInstruction =
+                        item.type === "admin_instruction" ||
+                        item.addedBy?.toLowerCase().includes("admin");
+
                       return (
-                        <div key={item._id || index} className="relative pl-6 group">
-                          <div className={`absolute -left-[9px] top-1 w-4 h-4 rounded-full border-2 flex items-center justify-center ${isAdminInstruction ? "bg-blue-600 border-blue-600 shadow-[0_0_10px_rgba(37,99,235,0.4)] z-10" : "bg-blue-100 border-blue-500"}`}>
-                            {isAdminInstruction && <Sparkles size={8} className="text-white" />}
+                        <div
+                          key={item._id || index}
+                          className="relative pl-6 group"
+                        >
+                          <div
+                            className={`absolute -left-[9px] top-1 w-4 h-4 rounded-full border-2 flex items-center justify-center ${isAdminInstruction ? "bg-blue-600 border-blue-600 shadow-[0_0_10px_rgba(37,99,235,0.4)] z-10" : "bg-blue-100 border-blue-500"}`}
+                          >
+                            {isAdminInstruction && (
+                              <Sparkles size={8} className="text-white" />
+                            )}
                           </div>
 
-                          <div className={`p-4 rounded-2xl shadow-sm border ${isAdminInstruction ? "bg-blue-50/50 border-blue-200" : "bg-white border-slate-100"}`}>
-                            
+                          <div
+                            className={`p-4 rounded-2xl shadow-sm border ${isAdminInstruction ? "bg-blue-50/50 border-blue-200" : "bg-white border-slate-100"}`}
+                          >
                             <div className="flex justify-between items-start mb-2">
-                              <span className={`text-xs font-bold flex items-center gap-1 ${isAdminInstruction ? "text-blue-700" : "text-slate-700"}`}>
-                                {isAdminInstruction && <Sparkles size={12} className="text-blue-600" />}
+                              <span
+                                className={`text-xs font-bold flex items-center gap-1 ${isAdminInstruction ? "text-blue-700" : "text-slate-700"}`}
+                              >
+                                {isAdminInstruction && (
+                                  <Sparkles
+                                    size={12}
+                                    className="text-blue-600"
+                                  />
+                                )}
                                 {isAdminInstruction ? " Admin " : item.addedBy}
                               </span>
-                              
+
                               <div className="flex items-center gap-3">
                                 {/* 🔥 EDIT / DELETE BUTTONS (Hover on card to see) */}
                                 {!isAdminInstruction && (
                                   <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
-                                    <button 
+                                    <button
                                       onClick={() => {
                                         setEditingNoteId(item._id);
                                         setEditNoteText(item.note || item.text);
-                                      }} 
+                                      }}
                                       className="text-blue-400 hover:text-blue-600 transition-colors"
                                     >
                                       <Edit2 size={14} />
                                     </button>
-                                    <button 
-                                      onClick={() => handleDeleteNote(item._id)} 
+                                    <button
+                                      onClick={() => handleDeleteNote(item._id)}
                                       className="text-red-400 hover:text-red-600 transition-colors"
                                     >
                                       <Trash2 size={14} />
                                     </button>
                                   </div>
                                 )}
-                                
+
                                 <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 px-2 py-1 rounded-md">
-                                  {new Date(item.timestamp || item.createdAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}
+                                  {new Date(
+                                    item.timestamp || item.createdAt,
+                                  ).toLocaleString("en-IN", {
+                                    dateStyle: "medium",
+                                    timeStyle: "short",
+                                  })}
                                 </span>
                               </div>
                             </div>
@@ -1672,23 +1747,38 @@ const handleLogout = () => {
                             {/* 🔥 TOGGLE BETWEEN TEXT AND EDIT INPUT */}
                             {editingNoteId === item._id ? (
                               <div className="mt-2 animate-in fade-in zoom-in-95 duration-200">
-                                <textarea 
+                                <textarea
                                   value={editNoteText}
-                                  onChange={(e) => setEditNoteText(e.target.value)}
+                                  onChange={(e) =>
+                                    setEditNoteText(e.target.value)
+                                  }
                                   className="w-full p-3 bg-white border border-blue-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500/20 resize-none"
                                   rows="3"
                                 />
                                 <div className="flex justify-end gap-2 mt-2">
-                                  <button onClick={() => setEditingNoteId(null)} className="px-3 py-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-100 rounded-lg transition-colors">Cancel</button>
-                                  <button onClick={() => handleEditNoteSubmit(item._id)} className="px-3 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-md shadow-blue-200 transition-all">Save Changes</button>
+                                  <button
+                                    onClick={() => setEditingNoteId(null)}
+                                    className="px-3 py-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-100 rounded-lg transition-colors"
+                                  >
+                                    Cancel
+                                  </button>
+                                  <button
+                                    onClick={() =>
+                                      handleEditNoteSubmit(item._id)
+                                    }
+                                    className="px-3 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-md shadow-blue-200 transition-all"
+                                  >
+                                    Save Changes
+                                  </button>
                                 </div>
                               </div>
                             ) : (
-                              <p className={`text-sm leading-relaxed whitespace-pre-wrap ${isAdminInstruction ? "text-blue-900 font-medium" : "text-slate-600"}`}>
+                              <p
+                                className={`text-sm leading-relaxed whitespace-pre-wrap ${isAdminInstruction ? "text-blue-900 font-medium" : "text-slate-600"}`}
+                              >
                                 {item.note || item.text}
                               </p>
                             )}
-
                           </div>
                         </div>
                       );
@@ -1714,11 +1804,14 @@ const handleLogout = () => {
                     disabled={!newNote.trim() || noteLoading} // 🔥 NEW: Disable during load
                     className="absolute right-3 bottom-4 p-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:hover:bg-blue-600 transition-colors shadow-md shadow-blue-200"
                   >
-                    {noteLoading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <Send size={16} />}
+                    {noteLoading ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    ) : (
+                      <Send size={16} />
+                    )}
                   </button>
                 </form>
               </div>
-
             </div>
           </div>
         )}
