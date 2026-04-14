@@ -1,45 +1,78 @@
-import React from 'react'
-import { BrowserRouter as Router } from 'react-router-dom'
-import AppRoutes from './Routes/AppRoutes'  
-import axios from 'axios'; // 🔥 Axios import kiya
-import toast, { Toaster } from 'react-hot-toast'; // 🔥 Toast import kiya
+import React, { useEffect } from 'react'
+import AppRoutes from './Routes/AppRoutes'
+import axios from 'axios'
+import toast, { Toaster } from 'react-hot-toast'
 
 // ==========================================
-// 🔥 GLOBAL AXIOS INTERCEPTOR (Chowkidaar)
+// 🔥 REQUEST INTERCEPTOR (Token bhejne ke liye)
+// ==========================================
+axios.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("token");
+
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// ==========================================
+// 🔥 RESPONSE INTERCEPTOR (Session expire handle)
 // ==========================================
 axios.interceptors.response.use(
-  (response) => {
-    // Agar sab sahi hai, toh response aage badhne do
-    return response;
-  },
+  (response) => response,
   (error) => {
-    // Agar backend se 401 ya 403 error aata hai (Token Expired)
     if (error.response && (error.response.status === 401 || error.response.status === 403)) {
       
-      // 1. LocalStorage saaf karo
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
+      localStorage.clear();
 
-      // 2. Screen par error message dikhao
-      toast.error("Session expired! Please login again.");
+      if (window.location.pathname !== "/login") {
+        toast.error("Session expired! Please login again.");
 
-      // 3. User ko Login page par bhej do
-      window.location.href = '/login';
+        setTimeout(() => {
+          window.location.href = "/login";
+        }, 1000);
+      }
     }
-    
+
     return Promise.reject(error);
   }
 );
-// ==========================================
 
+// ==========================================
+// 🔥 APP COMPONENT
+// ==========================================
 function App() {
+
+  // 🔥 Token expiry check (auto logout after 1h)
+  useEffect(() => {
+    const checkTokenExpiry = () => {
+      const expiry = localStorage.getItem("expiry");
+
+      if (expiry && Date.now() > expiry) {
+        localStorage.clear();
+        window.location.href = "/login";
+      }
+    };
+
+    // run on load
+    checkTokenExpiry();
+
+    // run every 1 min
+    const interval = setInterval(checkTokenExpiry, 60000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <div>
-      {/* 🔥 Toaster lagana zaroori hai taaki error message screen par pop-up ho */}
-      <Toaster position="top-right" /> 
+      <Toaster position="top-right" />
       <AppRoutes />
     </div>
   )
 }
 
-export default App
+export default App;
