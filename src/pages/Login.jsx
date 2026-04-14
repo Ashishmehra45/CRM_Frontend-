@@ -50,7 +50,7 @@ const Login = () => {
       // Ye API backend me banani padegi
      const res = await axios.post(`${API_URL}/forgot/forgot-password`, { email: forgotEmail });
       if (res.data.success) {
-        toast.success("Password reset link sent to your email!");
+        toast.success("Password reset link sent. Check inbox/spam.");
         setIsForgotView(false); // Link bhejne ke baad wapas login dikhao
         setForgotEmail("");
       }
