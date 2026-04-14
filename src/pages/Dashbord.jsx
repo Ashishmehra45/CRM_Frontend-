@@ -1191,28 +1191,7 @@ const FDIDashboard = () => {
                       />
                     </div>
 
-                    {/* 9. COORDINATES */}
-                    <div className="flex items-center gap-6">
-                     
-                      <div className="flex flex-1 gap-4">
-                        <input
-                          name="latitude"
-                          value={formData.latitude || ""}
-                          onChange={handleInputChange}
-                          type="text"
-                          placeholder="Latitude"
-                          className="w-1/2 p-2.5 bg-white border border-slate-300 rounded-md text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
-                        />
-                        <input
-                          name="longitude"
-                          value={formData.longitude || ""}
-                          onChange={handleInputChange}
-                          type="text"
-                          placeholder="Longitude"
-                          className="w-1/2 p-2.5 bg-white border border-slate-300 rounded-md text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
-                        />
-                      </div>
-                    </div>
+                   
                   </div>
                 </section>
 

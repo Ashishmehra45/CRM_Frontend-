@@ -802,37 +802,7 @@ const AdminDashboard = () => {
                     ))}
 
                     {/* Special case for Coordinates (Lat/Long) */}
-                    <div className="flex items-center gap-6">
-                     
-                      <div className="flex flex-1 gap-4">
-                        <input
-                          name="latitude"
-                          readOnly={!isAdminEditMode}
-                          value={
-                            isAdminEditMode
-                              ? adminFormData.latitude || ""
-                              : selectedLeadForView.latitude || "-"
-                          }
-                          onChange={handleAdminInputChange}
-                          type="text"
-                          placeholder="Latitude"
-                          className={`w-1/2 p-2.5 rounded-md text-sm font-semibold outline-none transition-all ${isAdminEditMode ? "bg-white border border-blue-500 shadow-sm ring-2 ring-blue-50" : "bg-slate-50 border-transparent cursor-not-allowed text-slate-700"}`}
-                        />
-                        <input
-                          name="longitude"
-                          readOnly={!isAdminEditMode}
-                          value={
-                            isAdminEditMode
-                              ? adminFormData.longitude || ""
-                              : selectedLeadForView.longitude || "-"
-                          }
-                          onChange={handleAdminInputChange}
-                          type="text"
-                          placeholder="Longitude"
-                          className={`w-1/2 p-2.5 rounded-md text-sm font-semibold outline-none transition-all ${isAdminEditMode ? "bg-white border border-blue-500 shadow-sm ring-2 ring-blue-50" : "bg-slate-50 border-transparent cursor-not-allowed text-slate-700"}`}
-                        />
-                      </div>
-                    </div>
+                   
                   </div>
                 </section>
 
