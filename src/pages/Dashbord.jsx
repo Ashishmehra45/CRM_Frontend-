@@ -1193,9 +1193,7 @@ const FDIDashboard = () => {
 
                     {/* 9. COORDINATES */}
                     <div className="flex items-center gap-6">
-                      <label className="w-64 text-sm font-medium text-slate-600">
-                        Coordinates
-                      </label>
+                     
                       <div className="flex flex-1 gap-4">
                         <input
                           name="latitude"

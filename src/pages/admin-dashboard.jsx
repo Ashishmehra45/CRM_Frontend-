@@ -803,9 +803,7 @@ const AdminDashboard = () => {
 
                     {/* Special case for Coordinates (Lat/Long) */}
                     <div className="flex items-center gap-6">
-                      <label className="w-64 text-sm font-bold text-slate-500">
-                        Coordinates
-                      </label>
+                     
                       <div className="flex flex-1 gap-4">
                         <input
                           name="latitude"
