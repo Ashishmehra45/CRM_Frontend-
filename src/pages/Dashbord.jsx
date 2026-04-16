@@ -38,9 +38,7 @@ import {
   Activity,
 } from "lucide-react";
 import { API_URL } from "../config/config"; // Apne config file se URL import karo
-import { ArrowLeft } from 'lucide-react'; 
-
-
+import { ArrowLeft } from "lucide-react";
 
 const FDIDashboard = () => {
   const [isEditMode, setIsEditMode] = useState(false);
@@ -65,23 +63,75 @@ const FDIDashboard = () => {
   const [editingNoteId, setEditingNoteId] = useState(null); // Edit mode track karne ke liye
   const [editNoteText, setEditNoteText] = useState("");
 
+  // ==========================================
+  // 🔥 NOTIFICATIONS LOGIC FOR WORKER
+  // ==========================================
+  const [notifications, setNotifications] = useState([]);
+  const [isNotifDrawerOpen, setIsNotifDrawerOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const fetchWorkerNotifications = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      // ⚠️ Dhyan de: Tere backend me ye route hona chahiye jo sirf is worker ki notifs laye
+      const res = await axios.get(`${API_URL}/workers/notifications`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (res.data.success) {
+        const fetchedNotifs = res.data.data;
+        setNotifications(fetchedNotifs);
+
+        // Local storage se check karo aakhri baar kab khola tha
+        const lastSeenTime = localStorage.getItem("workerLastSeenNotif");
+        if (lastSeenTime) {
+          const newUnread = fetchedNotifs.filter(
+            (n) => new Date(n.createdAt) > new Date(lastSeenTime)
+          );
+          setUnreadCount(newUnread.length);
+        } else {
+          setUnreadCount(fetchedNotifs.length); // Pehli baar saari unread
+        }
+      }
+    } catch (err) {
+      console.log("No new notifications or error fetching them.");
+    }
+  };
+
+  useEffect(() => {
+    fetchWorkerNotifications();
+    const interval = setInterval(fetchWorkerNotifications, 30000); // Har 30 sec me check karega
+    return () => clearInterval(interval);
+  }, []);
+
+  const openNotificationDrawer = () => {
+    setIsNotifDrawerOpen(true);
+    setUnreadCount(0); // Badge hata do
+    if (notifications.length > 0) {
+      localStorage.setItem("workerLastSeenNotif", notifications[0].createdAt); 
+    }
+  };
+
   const renderBackButton = () => (
     <button
-      type="button" 
+      type="button"
       onClick={(e) => {
-        e.preventDefault(); 
+        e.preventDefault();
         setActiveTab("dashboard"); // 🔥 Tere code me default tab "dashboard" hai, "overview" nahi!
-      }} 
+      }}
       className="mb-6 flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-blue-600 transition-colors group cursor-pointer focus:outline-none"
     >
       <span className="p-1.5 rounded-full bg-slate-100 group-hover:bg-blue-50 transition-colors">
-        <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+        <ArrowLeft
+          size={16}
+          className="group-hover:-translate-x-1 transition-transform"
+        />
       </span>
       Back to Dashboard
     </button>
   );
 
- const handleUpdateLead = async (e) => {
+  const handleUpdateLead = async (e) => {
     e.preventDefault();
 
     // 1. Pehle check karo ki ID hai bhi ya nahi
@@ -91,17 +141,18 @@ const FDIDashboard = () => {
     }
 
     // 🔥 NEW LOGIC: Check karo ki data change hua bhi hai ya nahi?
-    const isUnchanged = JSON.stringify(formData) === JSON.stringify(selectedLeadForEdit);
-    
+    const isUnchanged =
+      JSON.stringify(formData) === JSON.stringify(selectedLeadForEdit);
+
     if (isUnchanged) {
       // Agar kuch change nahi hua, toh API call mat karo aur wapas table pe bhej do (ya wahi rehne do)
       return toast("No update required. ", {
-        icon: 'ℹ️', // Information icon
+        icon: "ℹ️", // Information icon
         style: {
-          background: '#f8fafc',
-          color: '#334155',
-          border: '1px solid #cbd5e1'
-        }
+          background: "#f8fafc",
+          color: "#334155",
+          border: "1px solid #cbd5e1",
+        },
       });
     }
 
@@ -124,7 +175,7 @@ const FDIDashboard = () => {
         setFormData({}); // Form clear karo
         setSelectedLeadForEdit(null); // 🔥 State ko wapas khali kar do
         fetchLeads(activeTab); // Table refresh
-       setActiveTab("dashboard"); 
+        setActiveTab("dashboard");
         fetchLeads("dashboard"); //
       }
     } catch (err) {
@@ -701,7 +752,6 @@ const FDIDashboard = () => {
       {/* 🔥 SIDEBAR OVERLAY (Mobile ke liye jab menu khula ho) */}
       {isSidebarOpen && (
         <div
-         
           className="fixed inset-0 bg-black/60 z-[40] md:hidden backdrop-blur-sm transition-opacity"
           onClick={() => setIsSidebarOpen(false)}
         ></div>
@@ -785,6 +835,41 @@ const FDIDashboard = () => {
               );
             })}
           </div>
+
+        {/* 🔥 DYNAMIC NOTIFICATION BUTTON 🔥 */}
+          <div className="pt-4 mt-4 border-t border-slate-800">
+            <button
+              onClick={() => {
+                openNotificationDrawer(); // Naya function call hoga
+                setIsSidebarOpen(false);
+              }}
+              className="w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 text-slate-400 hover:bg-slate-800 hover:text-white group"
+            >
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  <Bell
+                    size={20}
+                    className={`transition-colors ${unreadCount > 0 ? "text-blue-400 animate-pulse" : "text-slate-500 group-hover:text-blue-400"}`}
+                  />
+                  {/* Red Dot Animation */}
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+                    </span>
+                  )}
+                </div>
+                <span className="font-medium">Notifications</span>
+              </div>
+              
+              {/* Badge count */}
+              {unreadCount > 0 && (
+                <span className="bg-red-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-lg shadow-red-500/30">
+                  {unreadCount} NEW
+                </span>
+              )}
+            </button>
+          </div>
         </nav>
 
         <div className="p-6 border-t border-slate-800 mt-4">
@@ -804,14 +889,10 @@ const FDIDashboard = () => {
             ========================================= */}
         {isTableView && (
           <div className="animate-in fade-in duration-500">
-
-           
-
             {/* --- TOP HEADER --- */}
             {renderBackButton()}
 
             <div className="flex justify-between items-center mb-8">
-              
               <div>
                 <h1 className="text-3xl font-bold text-slate-800 tracking-tight">
                   {pageTitle}
@@ -1190,8 +1271,6 @@ const FDIDashboard = () => {
                         className="flex-1 p-2.5 bg-white border border-slate-300 rounded-md text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
                       />
                     </div>
-
-                   
                   </div>
                 </section>
 
@@ -1685,7 +1764,9 @@ const FDIDashboard = () => {
                                     className="text-blue-600"
                                   />
                                 )}
-                                {isAdminInstruction ? " Ravi K Tiwari (Admin)" : item.addedBy}
+                                {isAdminInstruction
+                                  ? " Ravi K Tiwari (Admin)"
+                                  : item.addedBy}
                               </span>
 
                               <div className="flex items-center gap-3">
@@ -1788,6 +1869,64 @@ const FDIDashboard = () => {
                     )}
                   </button>
                 </form>
+              </div>
+            </div>
+          </div>
+        )}
+        {/* =========================================
+            🔥 NOTIFICATION DRAWER FOR WORKER
+            ========================================= */}
+        {isNotifDrawerOpen && (
+          <div className="fixed inset-0 z-[100] flex justify-end bg-slate-900/40 backdrop-blur-sm transition-all">
+            <div className="w-full max-w-md bg-white h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+              {/* Header */}
+              <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <div>
+                  <h2 className="text-xl font-extrabold text-slate-800 flex items-center gap-2">
+                    <Bell size={20} className="text-blue-600" /> Inbox
+                  </h2>
+                  <p className="text-sm font-medium text-slate-500 mt-1">
+                    Updates & Admin Instructions
+                  </p>
+                </div>
+                <button
+                  onClick={() => setIsNotifDrawerOpen(false)}
+                  className="p-2 bg-white hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-full transition-colors shadow-sm border border-slate-200"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* List */}
+              <div className="flex-1 overflow-y-auto p-6 bg-slate-50/30">
+                {notifications.length === 0 ? (
+                  <div className="text-center py-20">
+                    <MessageSquare size={40} className="mx-auto text-slate-300 mb-4" />
+                    <p className="text-slate-500 font-semibold">No new messages</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {notifications.map((notif, idx) => (
+                      <div key={idx} className="p-4 bg-white border border-blue-100 rounded-2xl shadow-sm relative overflow-hidden">
+                        <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500"></div>
+                        <div className="flex justify-between items-start ml-2">
+                          <div>
+                            <span className="font-black uppercase text-[10px] px-2 py-0.5 rounded-md mr-2 bg-blue-50 text-blue-600 flex items-center w-max gap-1 mb-2">
+                              <Sparkles size={10} /> Admin Message
+                            </span>
+                            <p className="text-sm font-semibold text-slate-800">
+                              Lead: <span className="text-blue-600">{notif.leadName}</span>
+                            </p>
+                            <p className="text-sm text-slate-600 mt-1">"{notif.message}"</p>
+                          </div>
+                        </div>
+                        <p className="text-[10px] text-slate-400 font-bold mt-3 ml-2 uppercase tracking-widest flex items-center gap-1">
+                          <Clock size={10} /> {new Date(notif.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>

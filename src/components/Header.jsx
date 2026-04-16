@@ -2,10 +2,11 @@ import React, { useState, useEffect } from "react";
 import { Search, Bell } from 'lucide-react';
 import img from "../assets/im global.png";
 
-function Header() {
+// 🔥 onSearch prop pass kiya hai
+function Header({ onSearch }) {
   const [userData, setUserData] = useState({ fullName: "Guest User" });
+  const [searchQuery, setSearchQuery] = useState("");
 
-  // 1. Data load karne ka common function
   const loadUserData = () => {
     const storedUser = localStorage.getItem("user");
     if (storedUser) {
@@ -20,17 +21,13 @@ function Header() {
   };
 
   useEffect(() => {
-    // 2. Pehli baar load karo
     loadUserData();
 
-    // 3. 🔥 MAGIC: Jab bhi localStorage badle, ye automatic chalega
     const handleStorageChange = () => {
       loadUserData();
     };
 
     window.addEventListener("storage", handleStorageChange);
-    
-    // Safety interval
     const interval = setInterval(loadUserData, 1000); 
 
     return () => {
@@ -48,6 +45,17 @@ function Header() {
     return parts[0][0].toUpperCase();
   };
 
+  // ==========================================
+  // 🔥 YE FUNCTION MISSING THA TERI FILE MEIN!
+  // ==========================================
+  const handleSearchChange = (e) => {
+    const value = e.target.value;
+    setSearchQuery(value);
+    if (onSearch) {
+      onSearch(value); // Parent ko batao kya search ho raha hai
+    }
+  };
+
   return (
     <header className="sticky top-0 z-40 flex flex-wrap justify-between items-center bg-white/70 backdrop-blur-xl px-4 md:px-10 py-3 md:py-5 border-b border-slate-200/60 shadow-sm gap-y-4">
 
@@ -60,18 +68,7 @@ function Header() {
         />
       </div>
 
-      {/* --- Middle Section (Search Bar) --- */}
-      {/* Mobile pe ye niche aayega full width, Desktop pe center me */}
-      <div className="order-last w-full sm:order-none sm:w-auto sm:flex-1 sm:max-w-md relative group px-1 sm:px-4">
-        <div className="absolute inset-y-0 left-4 sm:left-7 pl-1 flex items-center pointer-events-none">
-          <Search className="text-slate-400 group-focus-within:text-blue-500 transition-colors" size={18} />
-        </div>
-        <input
-          type="text"
-          placeholder="Quick search leads..."
-          className="w-full bg-slate-100/50 pl-11 pr-4 py-2.5 rounded-2xl outline-none border border-transparent focus:border-blue-500/40 focus:bg-white focus:ring-4 focus:ring-blue-500/5 transition-all text-sm font-medium"
-        />
-      </div>
+    
 
       {/* --- Right Section (Bell & Profile) --- */}
       <div className="flex items-center gap-3 md:gap-6">

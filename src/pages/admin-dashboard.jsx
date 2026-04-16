@@ -3,6 +3,7 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import imglogo from "../assets/im global.png";
 import {
+  Megaphone,
   Users,
   Briefcase,
   Activity,
@@ -36,6 +37,64 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
 
+  // ==========================================
+  // 🔥 GLOBAL BROADCAST & HISTORY LOGIC
+  // ==========================================
+  const [isBroadcastModalOpen, setIsBroadcastModalOpen] = useState(false);
+  const [broadcastMessage, setBroadcastMessage] = useState("");
+  const [isBroadcasting, setIsBroadcasting] = useState(false);
+  const [broadcastHistory, setBroadcastHistory] = useState([]); // 🔥 History state
+
+  // History fetch karne ka function
+  const fetchBroadcastHistory = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await axios.get(`${API_URL}/admin/broadcast-history`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.data.success) {
+        setBroadcastHistory(res.data.data);
+      }
+    } catch (err) {
+      console.error("Failed to load broadcast history", err);
+    }
+  };
+
+  // Jab modal khulega tab history load hogi
+  useEffect(() => {
+    if (isBroadcastModalOpen) {
+      fetchBroadcastHistory();
+    }
+  }, [isBroadcastModalOpen]);
+
+  const handleBroadcastSubmit = async (e) => {
+    e.preventDefault();
+    if (!broadcastMessage.trim()) return;
+
+    setIsBroadcasting(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await axios.post(
+        `${API_URL}/admin/broadcast`,
+        { message: broadcastMessage },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (res.data.success) {
+        toast.success("Instruction sent to all workers! 🚀");
+        setBroadcastMessage("");
+        fetchBroadcastHistory(); // 🔥 Message bhejte hi history refresh kar do
+      }
+    } catch (err) {
+      console.error("Broadcast Error:", err);
+      toast.error("Failed to send broadcast message.");
+    } finally {
+      setIsBroadcasting(false);
+    }
+  };
+
+
+
   // Tabs: 'overview', 'team', 'leads', 'view-lead'
   const [activeTab, setActiveTab] = useState("overview");
   const navigate = useNavigate();
@@ -57,23 +116,29 @@ const AdminDashboard = () => {
   const [isNotifDrawerOpen, setIsNotifDrawerOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0); // Naya state unread count ke liye
 
-  const fetchNotifications = async () => {
+const fetchNotifications = async () => {
     try {
       const res = await axios.get(`${API_URL}/admin/notifications`);
       if (res.data.success) {
         const fetchedNotifs = res.data.data;
-        setNotifications(fetchedNotifs);
 
-        // Naya logic: Check karo aakhri baar kab drawer khola tha
+        // 🔥 STEP 1: Sirf wo notifications rakho jo Admin ne khud NAHI ki hain
+        // Yahan "Ravi K Tiwari (Admin)" wahi naam hona chahiye jo tumne Backend me likha hai
+        const filteredNotifs = fetchedNotifs.filter(
+          (n) => n.performedBy !== "Ravi K Tiwari (Admin)"
+        );
+
+        setNotifications(filteredNotifs);
+
+        // 🔥 STEP 2: Unread count sirf filtered list se calculate karo
         const lastSeenTime = localStorage.getItem("adminLastSeenNotif");
         if (lastSeenTime) {
-          // Sirf wo notifications gino jo last seen time ke baad aayi hain
-          const newUnread = fetchedNotifs.filter(
+          const newUnread = filteredNotifs.filter(
             (n) => new Date(n.createdAt) > new Date(lastSeenTime)
           );
           setUnreadCount(newUnread.length);
         } else {
-          setUnreadCount(fetchedNotifs.length); // Pehli baar saari new dikhengi
+          setUnreadCount(filteredNotifs.length);
         }
       }
     } catch (err) {
@@ -235,8 +300,7 @@ const AdminDashboard = () => {
     <div className="flex min-h-screen bg-[#F8FAFC] font-sans text-slate-900 relative">
        {/* <Toaster position="top-right" /> */}
 
-      {/* --- SIDEBAR --- */}
-      <aside className="w-80 bg-[#0F172A] text-slate-300 flex flex-col fixed left-0 top-0 h-screen shadow-2xl z-50">
+     <aside className="w-80 bg-[#0F172A] text-slate-300 flex flex-col fixed left-0 top-0 h-screen shadow-2xl z-50">
         <div className="p-10">
           <div className="flex items-center gap-3 mb-1">
             <img
@@ -273,16 +337,23 @@ const AdminDashboard = () => {
             <Briefcase size={18} /> Leads Pipeline
           </button>
 
-        
-         {/* 🔥 ADDED: NOTIFICATIONS BUTTON IN SIDEBAR */}
+          {/* 🔥 NEW: BROADCAST BUTTON 🔥 */}
+          <button
+            onClick={() => setIsBroadcastModalOpen(true)}
+            className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all font-bold text-sm text-orange-400 hover:bg-orange-500/10 hover:text-orange-300 border border-transparent hover:border-orange-500/20 group"
+          >
+            <Megaphone size={18} className="group-hover:-rotate-12 transition-transform" /> 
+            Broadcast to All
+          </button>
+
+          {/* 🔥 ACTIVITY LOGS BUTTON */}
           <div className="pt-4 mt-4 border-t border-white/5">
             <button
-              onClick={openNotificationDrawer} // 🔥 Purane function ki jagah naya function call kiya
+              onClick={openNotificationDrawer} 
               className="w-full flex items-center justify-between px-5 py-4 rounded-2xl transition-all font-bold text-sm hover:bg-white/5 text-slate-300"
             >
               <div className="flex items-center gap-4">
                 <div className="relative">
-                  {/* 🔥 Agar unreadCount 0 se zyada hai tabhi pulse aur red dot dikhega */}
                   <Bell size={18} className={unreadCount > 0 ? "text-blue-400 animate-pulse" : "text-slate-400"} />
                   {unreadCount > 0 && (
                     <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
@@ -293,7 +364,6 @@ const AdminDashboard = () => {
                 </div>
                 Activity Logs
               </div>
-              {/* 🔥 Badge mein ab total length nahi, sirf unreadCount dikhega */}
               {unreadCount > 0 && (
                 <span className="bg-red-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-lg shadow-red-500/30">
                   {unreadCount} NEW
@@ -301,7 +371,6 @@ const AdminDashboard = () => {
               )}
             </button>
           </div>
-          {/* ========================================= */}
         </nav>
 
         <div className="p-8 border-t border-white/5">
@@ -317,7 +386,6 @@ const AdminDashboard = () => {
           </button>
         </div>
       </aside>
-
       {/* --- MAIN CONTENT AREA --- */}
       <main className="flex-1 ml-80 p-12 transition-all duration-500">
         {/* =========================================
@@ -1130,6 +1198,95 @@ const AdminDashboard = () => {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+
+    
+     {/* =========================================
+          🔥 BROADCAST MODAL (WITH HISTORY)
+          ========================================= */}
+      {isBroadcastModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 flex flex-col max-h-[85vh]">
+            
+            {/* Header */}
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-gradient-to-r from-orange-50 to-white shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-orange-100 text-orange-600 rounded-xl flex items-center justify-center">
+                  <Megaphone size={20} />
+                </div>
+                <div>
+                  <h2 className="text-xl font-extrabold text-slate-800">Global Instruction</h2>
+                  <p className="text-xs font-semibold text-orange-600 uppercase tracking-wider mt-0.5">Send to all Employee</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsBroadcastModalOpen(false)}
+                className="p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-full transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            {/* Scrollable Content Area */}
+            <div className="p-6 overflow-y-auto flex-1 bg-slate-50/50">
+              {/* Message Input Form */}
+              <form onSubmit={handleBroadcastSubmit} className="mb-8">
+                <label className="block text-sm font-bold text-slate-700 mb-2">
+                  New Message
+                </label>
+                <div className="relative">
+                  <textarea
+                    value={broadcastMessage}
+                    onChange={(e) => setBroadcastMessage(e.target.value)}
+                    placeholder="Write an instruction for everyone... (e.g., 'Update all pending leads by 5 PM')"
+                    rows="3"
+                    className="w-full p-4 bg-white border border-slate-200 rounded-2xl text-sm outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 transition-all resize-none shadow-sm"
+                  ></textarea>
+                  <button
+                    type="submit"
+                    disabled={!broadcastMessage.trim() || isBroadcasting}
+                    className="absolute bottom-3 right-3 px-5 py-2 bg-orange-500 text-white text-sm font-bold rounded-xl hover:bg-orange-600 transition-all shadow-md shadow-orange-500/30 disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {isBroadcasting ? "Sending..." : "Send"} <Send size={14} />
+                  </button>
+                </div>
+              </form>
+
+              {/* History Section */}
+              <div>
+                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-4">
+                  Past Instructions
+                </label>
+                
+                {broadcastHistory.length === 0 ? (
+                  <div className="text-center py-6 bg-white rounded-2xl border border-slate-100 border-dashed">
+                    <p className="text-sm text-slate-400 font-medium">No previous broadcasts found.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {broadcastHistory.map((item) => (
+                      <div key={item._id} className="p-4 bg-white border border-slate-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+                        <p className="text-sm text-slate-700 font-medium whitespace-pre-wrap">{item.message}</p>
+                        <div className="flex items-center gap-4 mt-3 pt-3 border-t border-slate-50">
+                          <span className="text-[10px] font-bold text-orange-500 bg-orange-50 px-2 py-1 rounded-md">
+                            By: {item.addedBy}
+                          </span>
+                          <span className="text-[10px] font-semibold text-slate-400">
+                            {new Date(item.createdAt).toLocaleString("en-IN", { 
+                                dateStyle: "medium", timeStyle: "short" 
+                            })}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
           </div>
         </div>
       )}
